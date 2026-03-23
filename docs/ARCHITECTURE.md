@@ -1,8 +1,8 @@
-# Architecture — PharmaCheck
+# Architecture — VeriMed
 
 ## Overview
 
-PharmaCheck is a pipeline-based web application. The core idea is simple: extract signals from images, compare them against trusted reference data, score consistency deterministically, then use an LLM only to produce a human-readable explanation.
+VeriMed is a pipeline-based web application. The core idea is simple: extract signals from images, compare them against trusted reference data, score consistency deterministically, then use an LLM only to produce a human-readable explanation.
 
 The LLM is **not** the truth engine. It is the communication layer.
 

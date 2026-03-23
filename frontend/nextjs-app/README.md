@@ -1,6 +1,6 @@
 # VeriMed Frontend (Next.js)
 
-Mobile-first UI for PharmaCheck medicine authenticity risk assessment.
+Mobile-first UI for VeriMed medicine authenticity risk assessment.
 
 ## Features
 

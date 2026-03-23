@@ -14,6 +14,45 @@ from models import BarcodeResult, ExtractedFields, MatchResult, ScoringResult, S
 logger = logging.getLogger(__name__)
 
 
+def _barcode_candidates(value: str | None) -> set[str]:
+    if not value:
+        return set()
+
+    raw = value.strip()
+    if not raw:
+        return set()
+
+    candidates = {raw}
+    digits_only = re.sub(r"\D", "", raw)
+    if len(digits_only) >= 8:
+        candidates.add(digits_only)
+
+    for match in re.findall(r"\d{8,14}", raw):
+        candidates.add(match)
+
+    return candidates
+
+
+def _barcode_match_detail(decoded_value: str | None, expected_value: str | None) -> tuple[bool, str | None, set[str]]:
+    if not decoded_value or not expected_value:
+        return False, None, set()
+
+    expected = expected_value.strip()
+    if not expected:
+        return False, None, set()
+
+    candidates = _barcode_candidates(decoded_value)
+    if expected in candidates:
+        return True, expected, candidates
+
+    # Handles QR payloads where expected barcode appears inside a longer string.
+    for candidate in candidates:
+        if expected in candidate:
+            return True, candidate, candidates
+
+    return False, None, candidates
+
+
 @lru_cache(maxsize=1)
 def load_rules() -> dict:
     rules_path = os.path.join(settings.data_dir, "rules.json")
@@ -165,7 +204,15 @@ def score(
 
     # Barcode match vs mismatch
     if barcode.decoded and barcode.value:
-        if product.barcode and product.barcode.strip() == barcode.value.strip():
+        matched, matched_candidate, all_candidates = _barcode_match_detail(barcode.value, product.barcode)
+        logger.debug(
+            "Barcode scoring check: expected=%s matched=%s matched_candidate=%s candidates=%s",
+            product.barcode,
+            matched,
+            matched_candidate,
+            sorted(all_candidates),
+        )
+        if matched:
             w = weights.get("barcode_match", 20)
             score_val += w
             signals.append(ScoringSignal(field="barcode_match", passed=True, weight=w,

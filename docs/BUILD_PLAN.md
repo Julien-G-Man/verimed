@@ -1,4 +1,4 @@
-# Build Plan — PharmaCheck
+# Build Plan — VeriMed
 
 ## Goal
 

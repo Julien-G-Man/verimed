@@ -1,12 +1,12 @@
-# CLAUDE.md — PharmaCheck
+# CLAUDE.md — VeriMed
 
-This file grounds Claude Code for implementation work on PharmaCheck. Read this before writing any code, generating any files, or making architectural decisions.
+This file grounds Claude Code for implementation work on VeriMed. Read this before writing any code, generating any files, or making architectural decisions.
 
 ---
 
 ## What This Project Is
 
-PharmaCheck is a mobile-friendly web app for medicine authenticity risk assessment. Users upload 3 images of a medicine package (front, back, barcode/QR). The backend extracts text and barcode data, matches it against a curated reference dataset, scores consistency using deterministic weighted rules, and returns a risk classification plus a plain-language explanation.
+VeriMed is a mobile-friendly web app for medicine authenticity risk assessment. Users upload 3 images of a medicine package (front, back, barcode/QR). The backend extracts text and barcode data, matches it against a curated reference dataset, scores consistency using deterministic weighted rules, and returns a risk classification plus a plain-language explanation.
 
 **The LLM is not the truth engine. It is only the explanation layer.**
 
@@ -17,7 +17,7 @@ All scoring is deterministic. The LLM generates the final user-facing paragraph 
 ## Project Structure
 
 ```
-pharmacheck/
+verimed/
 ├── frontend/                  — Next.js 14 app (App Router, TypeScript, Tailwind)
 │   └── nextjs-app/
 ├── backend/                   — FastAPI application

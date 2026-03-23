@@ -1,4 +1,4 @@
-# Data Model — PharmaCheck
+# Data Model — VeriMed
 
 ## Philosophy
 
@@ -8,7 +8,7 @@ The data layer is intentionally flat and file-based for the MVP. This means no d
 - Data is read-only at runtime (no writes to the dataset)
 - Files are loaded into memory at startup and cached
 
-If PharmaCheck grows beyond the hackathon, the data layer can be migrated to PostgreSQL with minimal changes to the service interfaces.
+If VeriMed grows beyond the hackathon, the data layer can be migrated to PostgreSQL with minimal changes to the service interfaces.
 
 ---
 

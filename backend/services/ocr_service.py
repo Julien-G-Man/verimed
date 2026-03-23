@@ -3,6 +3,7 @@ OCR service using EasyOCR (primary) with graceful fallback.
 The Reader is initialized once at module level — it is expensive to load.
 """
 import logging
+import warnings
 from typing import Any
 
 import numpy as np
@@ -12,6 +13,14 @@ from utils.normalization import normalize_text, parse_fields
 from utils.preprocessing import preprocess_for_ocr
 
 logger = logging.getLogger(__name__)
+
+# EasyOCR may emit this warning on CPU-only environments via torch DataLoader.
+# It does not affect correctness and can be safely suppressed to reduce log noise.
+warnings.filterwarnings(
+    "ignore",
+    message=".*'pin_memory' argument is set as true but no accelerator is found.*",
+    category=UserWarning,
+)
 
 # ---------------------------------------------------------------------------
 # Module-level EasyOCR reader (loaded once on first import / startup warm-up)

@@ -1,6 +1,7 @@
 import csv
 import logging
 import os
+import re
 from functools import lru_cache
 
 from rapidfuzz import fuzz, process
@@ -9,6 +10,30 @@ from config import settings
 from models import BarcodeResult, ExtractedFields, MatchResult, ProductRecord
 
 logger = logging.getLogger(__name__)
+
+
+def _barcode_candidates(value: str | None) -> list[str]:
+    """Return candidate barcode strings extracted from decoded barcode/QR payload."""
+    if not value:
+        return []
+
+    raw = value.strip()
+    if not raw:
+        return []
+
+    candidates = {raw}
+
+    # Whole-payload digits (e.g., formatted barcode with separators)
+    digits_only = re.sub(r"\D", "", raw)
+    if len(digits_only) >= 8:
+        candidates.add(digits_only)
+
+    # Numeric segments found inside QR URLs or structured payloads.
+    for match in re.findall(r"\d{8,14}", raw):
+        candidates.add(match)
+
+    # Keep stable order: longer candidates first.
+    return sorted(candidates, key=len, reverse=True)
 
 
 @lru_cache(maxsize=1)
@@ -35,9 +60,30 @@ def load_products() -> tuple:
 
 
 def _barcode_exact_match(barcode_value: str, products: tuple) -> ProductRecord | None:
+    candidates = _barcode_candidates(barcode_value)
+    logger.debug("Barcode/QR candidates for matching: %s", candidates)
     for p in products:
-        if p.barcode and p.barcode.strip() == barcode_value.strip():
+        if not p.barcode:
+            continue
+        expected = p.barcode.strip()
+        if expected in candidates:
+            logger.debug(
+                "Barcode exact match found: product_id=%s expected=%s matched_candidate=%s",
+                p.product_id,
+                expected,
+                expected,
+            )
             return p
+        for candidate in candidates:
+            if expected in candidate:
+                logger.debug(
+                    "Barcode embedded match found: product_id=%s expected=%s matched_candidate=%s",
+                    p.product_id,
+                    expected,
+                    candidate,
+                )
+                return p
+    logger.debug("No barcode/QR candidate matched any product barcode.")
     return None
 
 
@@ -60,6 +106,11 @@ def match_product(
         return MatchResult(matched=False, match_method="none", match_confidence=0.0)
 
     if barcode.decoded and barcode.value:
+        logger.debug(
+            "Decoded code available for matching: type=%s value=%s",
+            barcode.code_type,
+            barcode.value,
+        )
         hit = _barcode_exact_match(barcode.value, products)
         if hit:
             return MatchResult(matched=True, product=hit, match_method="barcode_exact", match_confidence=1.0)

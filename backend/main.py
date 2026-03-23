@@ -23,7 +23,9 @@ async def lifespan(app: FastAPI):
     from services.scoring_service import load_rules
     from services.ocr_service import get_reader
 
+    logger.info("========================================")
     logger.info("Loading products and rules into cache...")
+    logger.info("========================================")
     load_products()
     load_rules()
     logger.info("Warming EasyOCR reader...")
@@ -31,10 +33,11 @@ async def lifespan(app: FastAPI):
     logger.info("Startup complete.")
     yield
     logger.info("Shutting down.")
+    logger.info("========================================")
 
 
 app = FastAPI(
-    title="PharmaCheck API",
+    title="VeriMed API",
     description="Medicine authenticity risk assessment via OCR, barcode, and deterministic scoring.",
     version="1.0.0",
     lifespan=lifespan,

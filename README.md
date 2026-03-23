@@ -1,12 +1,12 @@
-# PharmaCheck — AI-Powered Medicine Authenticity Risk Assessment
+# VeriMed — AI-Powered Medicine Authenticity Risk Assessment
 
-> **Disclaimer:** PharmaCheck is an early-warning assistant for consumers and vendors. It does not replace pharmacists, manufacturers, or regulators. A result from this tool is never medical or legal certification.
+> **Disclaimer:** VeriMed is an early-warning assistant for consumers and vendors. It does not replace pharmacists, manufacturers, or regulators. A result from this tool is never medical or legal certification.
 
 ---
 
 ## What Is This?
 
-PharmaCheck is a mobile-friendly web application that helps users assess whether a medicine is likely **genuine**, **suspicious**, or **unverifiable** — by analyzing uploaded product images and comparing extracted details against a trusted reference dataset.
+VeriMed is a mobile-friendly web application that helps users assess whether a medicine is likely **genuine**, **suspicious**, or **unverifiable** — by analyzing uploaded product images and comparing extracted details against a trusted reference dataset.
 
 This is **not** a universal counterfeit detector. It is a **reference-based authenticity risk assessment tool**.
 
@@ -16,7 +16,7 @@ The distinction matters:
 - The FDA NDC directory is a product listing system, not a counterfeit-proof verification system
 - GS1 GTINs identify products, not guarantee authenticity
 
-What PharmaCheck *does* provide:
+What VeriMed *does* provide:
 - Likely product identification from packaging
 - Structured consistency check across multiple signals
 - Weighted risk score with reasons
@@ -92,7 +92,7 @@ Counterfeit and substandard medicines are dangerous. Ordinary consumers cannot r
 ## Project Structure
 
 ```
-pharmacheck/
+verimed/
 ├── frontend/
 │   └── nextjs-app/
 ├── backend/

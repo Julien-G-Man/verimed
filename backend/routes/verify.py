@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE_BYTES = settings.max_image_size_mb * 1024 * 1024
 
 
@@ -65,6 +65,13 @@ async def verify(
     for label, img_bytes in [("front_image", front_bytes), ("back_image", back_bytes)]:
         is_blurry, variance = detect_blur(img_bytes, threshold=blur_threshold)
         if is_blurry:
+            logger.warning(
+                "[%s] Blur validation failed for %s (variance=%.2f, threshold=%s)",
+                request_id,
+                label,
+                variance,
+                blur_threshold,
+            )
             raise HTTPException(
                 status_code=400,
                 detail=f"{label} is too blurry (variance={variance:.1f}). Please retake the photo.",
