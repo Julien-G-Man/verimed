@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+opencv-python-headless
+easyocr
+pytesseract
+pyzbar
+rapidfuzz
+python-dotenv
+anthropic
+httpx

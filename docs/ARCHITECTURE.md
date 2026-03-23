@@ -1,0 +1,439 @@
+# Architecture — PharmaCheck
+
+## Overview
+
+PharmaCheck is a pipeline-based web application. The core idea is simple: extract signals from images, compare them against trusted reference data, score consistency deterministically, then use an LLM only to produce a human-readable explanation.
+
+The LLM is **not** the truth engine. It is the communication layer.
+
+---
+
+## High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                     FRONTEND                        │
+│  Next.js (mobile-first)                             │
+│  - Image upload UI (3 slots: front, back, barcode)  │
+│  - Progress / loading state                         │
+│  - Result card: risk level, reasons, explanation    │
+│  - Extracted fields preview                         │
+└───────────────────┬─────────────────────────────────┘
+                    │ HTTP multipart/form-data
+                    ▼
+┌─────────────────────────────────────────────────────┐
+│                     BACKEND                         │
+│  FastAPI                                            │
+│                                                     │
+│  POST /api/verify                                   │
+│  ├── image_validator        (validate inputs)       │
+│  ├── preprocessing.py       (OpenCV pipeline)       │
+│  ├── ocr_service.py         (EasyOCR/Tesseract)     │
+│  ├── barcode_service.py     (pyzbar)                │
+│  ├── matcher_service.py     (CSV + rapidfuzz)       │
+│  ├── scoring_service.py     (weighted rules)        │
+│  └── explanation_service.py (LLM call)              │
+│                                                     │
+│  Returns: VerificationResult JSON                   │
+└───────────────────┬─────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────┐
+│                    DATA LAYER                       │
+│  data/products.csv        (reference product data)  │
+│  data/rules.json          (scoring weights/rules)   │
+│  data/reference_images/   (1 front + 1 back/drug)   │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Request/Response Lifecycle
+
+```
+Client uploads 3 images
+        │
+        ▼
+[1] Validation
+    - Check all 3 images present
+    - Check file type (JPEG/PNG/WEBP)
+    - Check file size (< 10MB each)
+    - Blur detection (Laplacian variance threshold)
+        │
+        ▼
+[2] Preprocessing (OpenCV per image)
+    - Resize to standard dimensions
+    - Grayscale for OCR images
+    - Denoise (fastNlMeansDenoising)
+    - Contrast normalization (CLAHE)
+    - Sharpen (unsharp mask)
+    - Crop likely text regions (front/back)
+    - Crop likely code region (barcode image)
+        │
+        ├──────────────────────────┐
+        ▼                          ▼
+[3a] OCR Extraction           [3b] Barcode Decoding
+     EasyOCR on front              pyzbar on barcode image
+     EasyOCR on back               Returns: { type, value, raw }
+     Returns: structured text      Falls back to QR reader if needed
+     blocks with confidence
+        │                          │
+        └──────────────┬───────────┘
+                       ▼
+[4] Text Normalization + Field Parsing
+    - Normalize whitespace, case
+    - Regex extract: expiry date, batch number
+    - Extract: brand name, strength, dosage form
+    - Extract: manufacturer string
+    - Extract: expected keywords
+        │
+        ▼
+[5] Candidate Matching (matcher_service)
+    - Load products.csv into memory (cached at startup)
+    - If barcode decoded: attempt direct barcode lookup first
+    - If barcode match: shortlist to that product
+    - If no barcode match: fuzzy match brand_name, generic_name
+    - Compute match confidence per candidate
+    - Select top candidate (or mark "no reliable match")
+        │
+        ▼
+[6] Consistency Scoring (scoring_service)
+    - Compare extracted fields to matched product record
+    - Apply weights from rules.json
+    - Accumulate score (0–100 scale)
+    - Collect list of positive signals and failure reasons
+    - Classify: low_risk / medium_risk / high_risk / cannot_verify
+        │
+        ▼
+[7] Explanation (explanation_service)
+    - Serialize VerificationResult to structured prompt
+    - Single LLM call (Claude or GPT-4o-mini)
+    - Returns 2–4 sentence user-facing explanation
+    - Append recommended action
+        │
+        ▼
+[8] Response Assembly
+    - Return full VerificationResult JSON to frontend
+```
+
+---
+
+## Data Models
+
+### Input Model
+
+```python
+# Pydantic model for the incoming verification request
+class VerificationRequest(BaseModel):
+    # All three images are required; sent as multipart/form-data
+    # Not a Pydantic model — handled as FastAPI File() params
+    pass
+
+# FastAPI route signature:
+# async def verify(
+#     front_image: UploadFile = File(...),
+#     back_image: UploadFile = File(...),
+#     barcode_image: UploadFile = File(...)
+# )
+```
+
+### Extraction Model
+
+```python
+class ExtractedFields(BaseModel):
+    brand_name: str | None
+    generic_name: str | None
+    strength: str | None
+    dosage_form: str | None
+    manufacturer: str | None
+    batch_number: str | None
+    expiry_date: str | None
+    keywords_found: list[str]
+    raw_front_text: str
+    raw_back_text: str
+    ocr_confidence_front: float   # 0.0–1.0 average confidence
+    ocr_confidence_back: float
+
+class BarcodeResult(BaseModel):
+    decoded: bool
+    code_type: str | None         # e.g. "EAN13", "QR_CODE", "CODE128"
+    value: str | None
+    raw_payload: str | None
+```
+
+### Product Record (from CSV)
+
+```python
+class ProductRecord(BaseModel):
+    product_id: str
+    brand_name: str
+    generic_name: str
+    strength: str
+    dosage_form: str
+    manufacturer: str
+    barcode: str | None
+    expected_keywords: list[str]
+    expected_front_text: list[str]
+    expected_back_text: list[str]
+    expiry_pattern: str           # regex string
+    batch_pattern: str            # regex string
+    reference_image_front: str    # filename in reference_images/
+    reference_image_back: str
+    ghana_fda_listed: bool        # manual verification flag
+    notes: str | None
+```
+
+### Match Result
+
+```python
+class MatchResult(BaseModel):
+    matched: bool
+    product: ProductRecord | None
+    match_method: str             # "barcode_exact" | "fuzzy_name" | "keyword" | "none"
+    match_confidence: float       # 0.0–1.0
+```
+
+### Scoring Result
+
+```python
+class ScoringSignal(BaseModel):
+    field: str
+    passed: bool
+    weight: int
+    reason: str
+
+class ScoringResult(BaseModel):
+    raw_score: int
+    normalized_score: float       # 0–100
+    classification: str           # "low_risk" | "medium_risk" | "high_risk" | "cannot_verify"
+    signals: list[ScoringSignal]
+    reasons: list[str]            # human-readable failure reasons only
+```
+
+### Final Verification Result
+
+```python
+class VerificationResult(BaseModel):
+    # Meta
+    request_id: str               # UUID
+    timestamp: str                # ISO 8601
+
+    # Identity
+    identified_product: str | None
+    matched_product_id: str | None
+
+    # Extracted signals
+    extraction: ExtractedFields
+    barcode: BarcodeResult
+
+    # Matching
+    match: MatchResult
+
+    # Scoring
+    scoring: ScoringResult
+
+    # Output
+    risk_score: int               # 0–100
+    classification: str
+    reasons: list[str]
+    explanation: str              # LLM-generated, user-facing
+    recommendation: str           # e.g. "Consult a pharmacist before use"
+```
+
+---
+
+## Service Contracts
+
+### `ocr_service.py`
+
+```
+Input:  preprocessed image (numpy array or bytes)
+Output: ExtractedFields (partial — fills OCR-derived fields)
+
+Internal steps:
+  1. Run EasyOCR reader.readtext() on image
+  2. Filter low-confidence text blocks (< 0.4 threshold)
+  3. Concatenate text into raw string
+  4. Pass raw string through field parsers (normalization.py)
+  5. Return structured ExtractedFields
+```
+
+### `barcode_service.py`
+
+```
+Input:  barcode/QR image (numpy array or bytes)
+Output: BarcodeResult
+
+Internal steps:
+  1. pyzbar.decode() on image
+  2. If no result: attempt QR-specific decode with OpenCV QRCodeDetector
+  3. Return first successful decode or decoded=False
+```
+
+### `matcher_service.py`
+
+```
+Input:  ExtractedFields, BarcodeResult
+Output: MatchResult
+
+Internal steps:
+  1. Load products list (CSV → list[ProductRecord]) — cached in module-level variable
+  2. If barcode decoded and barcode.value is not None:
+       - Attempt exact match on products[*].barcode
+       - If match found: return match_method="barcode_exact", confidence=1.0
+  3. Build candidate list via rapidfuzz.process.extract():
+       - Query: extracted brand_name + generic_name
+       - Corpus: products[*].brand_name + generic_name
+       - scorer: fuzz.token_set_ratio
+       - cutoff: 60
+  4. Score each candidate for keyword overlap
+  5. Return top candidate if confidence > 0.55, else matched=False
+```
+
+### `scoring_service.py`
+
+```
+Input:  ExtractedFields, BarcodeResult, MatchResult, rules (dict from rules.json)
+Output: ScoringResult
+
+Internal steps:
+  1. If not matched: return classification="cannot_verify", score=0
+  2. For each scoring rule in rules["field_weights"]:
+       - Evaluate condition against extracted vs product fields
+       - Accumulate score delta
+       - Append ScoringSignal
+  3. Apply penalty rules from rules["penalties"]
+  4. Clamp final score to [0, 100]
+  5. Classify by threshold bands
+  6. Return ScoringResult
+```
+
+### `explanation_service.py`
+
+```
+Input:  VerificationResult (without explanation field populated)
+Output: str (the explanation text)
+
+Internal steps:
+  1. Build structured prompt:
+       - System: "You are a medicine safety assistant. Write plain-language summaries of risk assessments. Be honest about uncertainty. Never say a product is definitely real or fake."
+       - User: JSON dump of risk_score, classification, reasons, identified_product
+  2. Single LLM API call (max_tokens=200)
+  3. Return response text
+  4. If LLM call fails: return fallback static text based on classification
+```
+
+---
+
+## Preprocessing Pipeline (OpenCV)
+
+```python
+def preprocess_for_ocr(image: np.ndarray) -> np.ndarray:
+    # 1. Resize: limit longest edge to 1600px (maintains aspect ratio)
+    # 2. Convert to grayscale
+    # 3. CLAHE contrast normalization (clipLimit=2.0, tileGridSize=(8,8))
+    # 4. Gaussian blur to reduce noise (3x3 kernel)
+    # 5. Unsharp masking for edge sharpening
+    # 6. Threshold if image is mostly dark (Otsu binarization)
+    return processed_image
+
+def preprocess_for_barcode(image: np.ndarray) -> np.ndarray:
+    # 1. Resize to fixed width 800px
+    # 2. Grayscale
+    # 3. Denoise (fastNlMeansDenoising, h=10)
+    # 4. Sharpen aggressively (Laplacian-based)
+    # 5. Threshold (adaptive)
+    return processed_image
+```
+
+---
+
+## Scoring Weights (default)
+
+| Signal | Delta |
+|---|---|
+| Product name match | +20 |
+| Generic name match | +10 |
+| Strength match | +15 |
+| Dosage form match | +10 |
+| Manufacturer match | +15 |
+| Barcode decoded successfully | +10 |
+| Barcode matches dataset record | +20 |
+| Expiry detected and valid format | +10 |
+| Batch number detected and valid | +5 |
+| Critical keyword missing | −10 |
+| Spelling anomaly detected in brand name | −15 |
+| Manufacturer string missing entirely | −15 |
+| Barcode decoded but does NOT match record | −25 |
+| No product match found | −20 |
+
+All weights are overridable via `rules.json`.
+
+---
+
+## Frontend Component Map
+
+```
+/app
+  /page.tsx                  — Landing / home
+  /verify/page.tsx           — Main verification flow
+
+components/
+  ImageUploadZone.tsx        — Drag/drop or tap-to-upload for each image slot
+  UploadProgress.tsx         — Shows upload + processing status
+  ResultCard.tsx             — Risk level badge, score, explanation
+  ExtractedFieldsPanel.tsx   — Collapsible: shows what OCR found
+  ReasonsPanel.tsx           — Bullet list of scoring signals
+  RecommendationBanner.tsx   — Call-to-action based on classification
+
+lib/
+  api.ts                     — Typed fetch wrapper for POST /api/verify
+  types.ts                   — TypeScript mirrors of Pydantic models
+```
+
+---
+
+## API Endpoints
+
+### `POST /api/verify`
+
+| Field | Type | Description |
+|---|---|---|
+| `front_image` | `File` | Front of medicine packaging |
+| `back_image` | `File` | Back of medicine packaging |
+| `barcode_image` | `File` | Close-up of barcode or QR code |
+
+**Response:** `VerificationResult` (see Data Models above)
+
+**Error responses:**
+
+| Code | Reason |
+|---|---|
+| 422 | Missing image(s) or invalid file type |
+| 400 | Image too blurry / unreadable |
+| 500 | Internal extraction or scoring failure |
+
+### `GET /api/health`
+
+Returns `{ "status": "ok" }`. Used by frontend to check backend is live.
+
+---
+
+## Security Notes (Hackathon MVP)
+
+- Images are processed in memory and not persisted to disk
+- No user authentication required for MVP
+- No PII collected
+- Add rate limiting before any public deployment (FastAPI `slowapi`)
+- Never log raw image data
+
+---
+
+## Known Limitations
+
+- OCR accuracy degrades on glossy packaging, rotated text, or compressed images
+- pyzbar requires the barcode to be well-lit and minimal skew
+- Fuzzy matching can produce false positives if two products share similar names
+- LLM explanation may hallucinate if the prompt is ambiguous — the prompt must be tightly structured
+- Dataset coverage is the ceiling for detection quality; products not in the dataset return "cannot verify"
+- Cloned packaging (visually identical fake) may score as low risk if all text and barcode are copied correctly

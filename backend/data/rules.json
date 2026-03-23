@@ -1,0 +1,79 @@
+{
+  "field_weights": {
+    "product_name_match": 20,
+    "generic_name_match": 10,
+    "strength_match": 15,
+    "dosage_form_match": 10,
+    "manufacturer_match": 15,
+    "barcode_decoded": 10,
+    "barcode_match": 20,
+    "expiry_valid": 10,
+    "batch_valid": 5
+  },
+  "penalties": {
+    "critical_keyword_missing": -10,
+    "spelling_anomaly": -15,
+    "manufacturer_missing": -15,
+    "barcode_mismatch": -25,
+    "no_product_match": -20
+  },
+  "classification_thresholds": {
+    "low_risk": 80,
+    "medium_risk": 50
+  },
+  "matching": {
+    "fuzzy_cutoff_score": 60,
+    "fuzzy_confidence_threshold": 0.55,
+    "barcode_exact_confidence": 1.0
+  },
+  "ocr": {
+    "min_confidence": 0.4,
+    "blur_variance_threshold": 100
+  },
+  "required_keywords_by_product": {
+    "drug_001": [
+      "paracetamol",
+      "tablets",
+      "store below 30"
+    ],
+    "drug_002": [
+      "amoxicillin",
+      "clavulanate",
+      "antibiotic"
+    ],
+    "drug_003": [
+      "ibuprofen",
+      "tablets"
+    ],
+    "drug_004": [
+      "artemether",
+      "lumefantrine",
+      "malaria"
+    ],
+    "drug_005": [
+      "metronidazole",
+      "tablets"
+    ],
+    "drug_006": [
+      "ORS",
+      "oral rehydration"
+    ],
+    "drug_007": [
+      "salbutamol",
+      "inhaler"
+    ],
+    "drug_008": [
+      "ascorbic acid",
+      "vitamin c"
+    ]
+  },
+  "regex_patterns": {
+    "expiry_formats": [
+      "\\d{2}/\\d{4}",
+      "\\d{2}/\\d{2}",
+      "EXP\\s?\\d{2}/\\d{4}",
+      "[A-Z]{3}\\s?\\d{4}"
+    ],
+    "batch_generic": "[A-Z]{1,3}\\d{4,8}"
+  }
+}
