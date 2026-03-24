@@ -8,6 +8,8 @@ This file grounds Claude Code for implementation work on VeriMed. Read this befo
 
 VeriMed is a mobile-friendly web app for medicine authenticity risk assessment. Users upload 3 images of a medicine package (front, back, barcode/QR). The backend extracts text and barcode data, matches it against a curated reference dataset, scores consistency using deterministic weighted rules, and returns a risk classification plus a plain-language explanation.
 
+The app also includes an embedded follow-up assistant panel beside verification results (in `/verify`) so users can ask contextual questions about the exact result they are viewing.
+
 **The LLM is not the truth engine. It is only the explanation layer.**
 
 All scoring is deterministic. The LLM generates the final user-facing paragraph only.
@@ -24,16 +26,21 @@ verimed/
 │   ├── main.py
 │   ├── models.py              — All Pydantic models
 │   ├── routes/
-│   │   └── verify.py          — POST /api/verify
+│   │   ├── verify.py          — POST /api/verify
+│   │   └── conversation.py    — Conversation endpoints
 │   ├── services/
 │   │   ├── ocr_service.py
 │   │   ├── barcode_service.py
 │   │   ├── matcher_service.py
 │   │   ├── scoring_service.py
-│   │   └── explanation_service.py
+│   │   ├── explanation_service.py
+│   │   ├── llm_client.py
+│   │   └── conversation_service.py
 │   ├── data/
+│   │   ├── fda_ghana_drugs_500.csv
 │   │   ├── products.csv
 │   │   ├── rules.json
+│   │   ├── verimed.sqlite3
 │   │   └── reference_images/
 │   └── utils/
 │       ├── preprocessing.py
@@ -54,8 +61,8 @@ verimed/
 | OCR | EasyOCR | Primary. Tesseract (`pytesseract`) as fallback |
 | Barcode/QR | pyzbar | With OpenCV QRCodeDetector as fallback |
 | Fuzzy matching | rapidfuzz | Use `fuzz.token_set_ratio` |
-| Data | CSV + JSON + local image folder | No database for MVP |
-| LLM | Anthropic Claude API (claude-haiku-3-5 or sonnet) | Single call, max_tokens=200 |
+| Data | CSV + JSON + SQLite + local image folder | SQLite is used only for follow-up conversation persistence |
+| LLM | NVIDIA OpenAI-compatible API + Anthropic Claude fallback | Single call per explanation/follow-up turn |
 
 ---
 
@@ -92,8 +99,11 @@ class MatchResult(BaseModel):
 
 class ScoringResult(BaseModel):
     raw_score: int
+    unclamped_score: int
     normalized_score: float
     classification: str           # "low_risk" | "medium_risk" | "high_risk" | "cannot_verify"
+    signals: list[dict]
+    total_contribution: int
     reasons: list[str]
 
 class VerificationResult(BaseModel):
@@ -110,6 +120,33 @@ class VerificationResult(BaseModel):
     reasons: list[str]
     explanation: str
     recommendation: str
+
+class ConversationMessage(BaseModel):
+    id: str
+    conversation_id: str
+    role: str
+    content: str
+    created_at: str
+
+class ConversationCreateRequest(BaseModel):
+    verification: VerificationResult
+
+class ConversationCreateResponse(BaseModel):
+    conversation_id: str
+    request_id: str
+    created_at: str
+    verification: VerificationResult
+    messages: list[ConversationMessage]
+
+class FollowUpMessageRequest(BaseModel):
+    message: str
+
+class ConversationResponse(BaseModel):
+    conversation_id: str
+    request_id: str
+    created_at: str
+    verification: VerificationResult
+    messages: list[ConversationMessage]
 ```
 
 ---
@@ -121,10 +158,11 @@ class VerificationResult(BaseModel):
 3. OCR front + back with EasyOCR
 4. Decode barcode/QR with pyzbar
 5. Normalize and parse extracted text into structured fields
-6. Match against `products.csv` (barcode exact first, fuzzy fallback)
+6. Match against `fda_ghana_drugs_500.csv` (primary) with `products.csv` fallback
 7. Score consistency with weighted rules from `rules.json`
 8. Call LLM for explanation (single call, max_tokens=200)
 9. Return `VerificationResult`
+10. Optional follow-up assistant uses stored `VerificationResult` + chat history for contextual Q&A
 
 ---
 
@@ -160,10 +198,17 @@ class VerificationResult(BaseModel):
 - If LLM call fails for any reason: return a hardcoded fallback string based on classification
 - Never let LLM failure break the overall response
 
+### Follow-up Assistant
+- Assistant is contextual and embedded in `/verify`; it is not a standalone primary chatbot flow
+- Conversation context is persisted in SQLite (`backend/data/verimed.sqlite3`)
+- Follow-up responses use full stored `VerificationResult` plus recent conversation history
+- Allow markdown-style responses (tables/code/list formatting) in assistant output
+
 ### Data Loading
 - Use `functools.lru_cache(maxsize=1)` on `load_products()` and `load_rules()`
 - Call both during FastAPI `lifespan` startup event to warm cache
 - products.csv multi-value fields (keywords, expected text) are pipe-separated strings → split on `|`
+- Primary dataset source is `fda_ghana_drugs_500.csv` (Ghana FDA registry extract)
 
 ---
 
@@ -177,6 +222,7 @@ class VerificationResult(BaseModel):
 - API calls go through `frontend/lib/api.ts` — no raw fetch calls in components
 - Mobile-first: design at 390px width, then scale up
 - Risk badge colors: green = low_risk, amber = medium_risk, red = high_risk, gray = cannot_verify
+- Follow-up assistant must remain in `/verify` results layout (right panel on desktop, stacked on mobile)
 
 ---
 
@@ -191,6 +237,12 @@ ghana_fda_listed, notes
 ```
 
 Multi-value fields (`expected_keywords`, `expected_front_text`, `expected_back_text`) use `|` as separator.
+
+## Primary Dataset Source
+
+- Primary dataset file: `backend/data/fda_ghana_drugs_500.csv`
+- Source URL: https://fdaghana.gov.gh/programmes/product-registry/
+- Use as reference data for risk assessment only (not regulatory certification).
 
 ---
 
@@ -230,12 +282,20 @@ Multi-value fields (`expected_keywords`, `expected_front_text`, `expected_back_t
 
 **Response:** `{ "status": "ok" }`
 
+### Conversation Endpoints
+
+- `POST /api/conversations` — create conversation from a `VerificationResult`
+- `GET /api/conversations` — list conversation summaries
+- `GET /api/conversations/{conversation_id}` — get conversation history + verification snapshot
+- `POST /api/conversations/{conversation_id}/messages` — send follow-up message and get updated conversation
+- `DELETE /api/conversations/history` — clear persisted conversation history
+
 ---
 
 ## What NOT to Do
 
 - Do not train any custom ML models — use existing OCR and barcode libraries
-- Do not add a database — CSV/JSON is intentional for the MVP
+- Do not add external production databases for MVP (SQLite conversation persistence is already implemented and acceptable)
 - Do not make multiple LLM calls — one call per request, for explanation only
 - Do not persist uploaded images — process in memory only
 - Do not make LLM responsible for scoring logic — scoring is always deterministic Python
@@ -263,7 +323,11 @@ The third case (cannot_verify) is as important as the other two in the pitch. Do
 
 ```
 ANTHROPIC_API_KEY=...        # Required for explanation_service
+NVIDIA_OPENAI_API_KEY=...    # Optional primary LLM provider
+NVIDIA_OPENAI_API_URL=...    # Optional override for NVIDIA OpenAI-compatible endpoint
+NVIDIA_OPENAI_MODEL=...      # Optional model ID
 DATA_DIR=backend/data        # Path to CSV + JSON + reference images
+SQLITE_DB_PATH=data/verimed.sqlite3
 MAX_IMAGE_SIZE_MB=10
 OCR_MIN_CONFIDENCE=0.4
 ```

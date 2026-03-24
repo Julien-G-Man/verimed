@@ -16,14 +16,58 @@ If VeriMed grows beyond the hackathon, the data layer can be migrated to Postgre
 
 ```
 backend/data/
+├── fda_ghana_drugs_500.csv — Primary Ghana FDA registry extract (current)
 ├── products.csv          — Reference product records
 ├── rules.json            — Scoring weights, regex patterns, thresholds
+├── verimed.sqlite3       — Conversation persistence store
 └── reference_images/
     ├── drug_001_front.jpg
     ├── drug_001_back.jpg
     ├── drug_002_front.jpg
     └── ...
 ```
+
+## Dataset Source Disclaimer
+
+The primary medicine registry dataset used by this project was obtained from the Ghana FDA Product Registry page:
+https://fdaghana.gov.gh/programmes/product-registry/
+
+The dataset is used as a reference input for risk assessment and should not be interpreted as formal regulatory certification.
+
+---
+
+## Conversation Persistence (Implemented)
+
+Follow-up assistant conversations are persisted in SQLite at `backend/data/verimed.sqlite3`.
+
+### Table: `conversations`
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | text (PK) | Conversation ID (UUID) |
+| `request_id` | text | Verification request ID |
+| `verification_json` | text | Full serialized `VerificationResult` snapshot |
+| `created_at` | text | ISO 8601 timestamp |
+
+### Table: `conversation_messages`
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | text (PK) | Message ID (UUID) |
+| `conversation_id` | text (FK) | Parent conversation ID |
+| `role` | text | `user` or `assistant` |
+| `content` | text | Message content |
+| `created_at` | text | ISO 8601 timestamp |
+
+### Assistant-related Models
+
+- `ConversationMessage`
+- `ConversationCreateRequest`
+- `ConversationCreateResponse`
+- `FollowUpMessageRequest`
+- `ConversationResponse`
+
+These models are defined in backend models and mirror frontend TypeScript contracts.
 
 ---
 
@@ -194,7 +238,7 @@ Start with the "High" priority items. 6–8 products is enough for a compelling 
 
 ### Ghana FDA Product Registry
 
-The Ghana Food and Drugs Authority maintains a public product registry at [fdaghana.gov.gh](https://www.fdaghana.gov.gh). Manually search each product to confirm it appears in the registry. Record the result in `ghana_fda_listed` column.
+The Ghana Food and Drugs Authority maintains a public product registry at [https://fdaghana.gov.gh/programmes/product-registry/](https://fdaghana.gov.gh/programmes/product-registry/). Manually search each product to confirm it appears in the registry. Record the result in `ghana_fda_listed` column.
 
 **Use for:**
 - Confirming products are Ghana-market registered

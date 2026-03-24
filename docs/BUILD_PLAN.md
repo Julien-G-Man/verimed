@@ -4,6 +4,14 @@
 
 Ship a working MVP in 24–48 hours. This document defines the build order, what "done" means for each phase, team roles, and a compressed 24-hour sprint schedule.
 
+## Implementation Update
+
+This project now includes an implemented follow-up assistant feature that was not in the original MVP plan. The assistant is contextual (result-adjacent), persisted with SQLite, and scoped to post-verification follow-up questions.
+
+- Frontend: assistant panel embedded in the `/verify` results layout
+- Backend: conversation endpoints and SQLite persistence
+- Safety framing retained: assistant is explanatory support, not a certification engine
+
 ---
 
 ## Build Philosophy

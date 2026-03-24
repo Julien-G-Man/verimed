@@ -2,6 +2,8 @@
 
 > **Disclaimer:** VeriMed is an early-warning assistant for consumers and vendors. It does not replace pharmacists, manufacturers, or regulators. A result from this tool is never medical or legal certification.
 
+> **Dataset Source Disclaimer:** The primary medicine registry dataset used in this project was obtained from the Ghana FDA Product Registry page: https://fdaghana.gov.gh/programmes/product-registry/
+
 ---
 
 ## What Is This?
@@ -70,6 +72,13 @@ Counterfeit and substandard medicines are dangerous. Ordinary consumers cannot r
 6. Rule engine computes a credibility/risk score
 7. LLM converts the structured result into a plain-language explanation
 8. UI displays: identified product, extracted details, risk level, reasons, recommendation
+
+### Implemented Follow-up Assistant Flow
+
+1. After verification results appear, an assistant panel is shown beside the result details.
+2. User asks follow-up questions about the exact displayed result.
+3. Backend stores conversation and messages in SQLite for persistence.
+4. Assistant responds using the full verification snapshot plus conversation history.
 ```
 
 ---
@@ -85,7 +94,16 @@ Counterfeit and substandard medicines are dangerous. Ordinary consumers cannot r
 | Barcode/QR | pyzbar |
 | Fuzzy matching | rapidfuzz |
 | Data | CSV + JSON + local image folder |
+| Conversation persistence | SQLite |
 | Explanation | Single LLM API call (Claude or OpenAI) |
+
+---
+
+## Dataset Note
+
+- Primary registry dataset file: `backend/data/fda_ghana_drugs_500.csv`
+- Source page: https://fdaghana.gov.gh/programmes/product-registry/
+- This project uses downloaded registry data for risk-assessment reference only; it is not an official regulatory certification system.
 
 ---
 
@@ -98,15 +116,20 @@ verimed/
 ├── backend/
 │   ├── main.py
 │   ├── routes/
+│   │   ├── verify.py
+│   │   └── conversation.py
 │   ├── services/
 │   │   ├── ocr_service.py
 │   │   ├── barcode_service.py
 │   │   ├── matcher_service.py
 │   │   ├── scoring_service.py
 │   │   └── explanation_service.py
+│   │   └── conversation_service.py
 │   ├── data/
+│   │   ├── fda_ghana_drugs_500.csv
 │   │   ├── products.csv
 │   │   ├── rules.json
+│   │   ├── verimed.sqlite3
 │   │   └── reference_images/
 │   └── utils/
 │       ├── preprocessing.py

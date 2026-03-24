@@ -18,6 +18,7 @@ The LLM is **not** the truth engine. It is the communication layer.
 │  - Progress / loading state                         │
 │  - Result card: risk level, reasons, explanation    │
 │  - Extracted fields preview                         │
+│  - Embedded follow-up assistant panel               │
 └───────────────────┬─────────────────────────────────┘
                     │ HTTP multipart/form-data
                     ▼
@@ -33,6 +34,8 @@ The LLM is **not** the truth engine. It is the communication layer.
 │  ├── matcher_service.py     (CSV + rapidfuzz)       │
 │  ├── scoring_service.py     (weighted rules)        │
 │  └── explanation_service.py (LLM call)              │
+│  ├── conversation.py        (/api/conversations)    │
+│  └── conversation_service.py (SQLite persistence)   │
 │                                                     │
 │  Returns: VerificationResult JSON                   │
 └───────────────────┬─────────────────────────────────┘
@@ -40,11 +43,32 @@ The LLM is **not** the truth engine. It is the communication layer.
                     ▼
 ┌─────────────────────────────────────────────────────┐
 │                    DATA LAYER                       │
-│  data/products.csv        (reference product data)  │
+│  data/fda_ghana_drugs_500.csv (primary registry data)│
+│  data/products.csv        (legacy curated fallback) │
 │  data/rules.json          (scoring weights/rules)   │
+│  data/verimed.sqlite3     (conversation persistence)│
 │  data/reference_images/   (1 front + 1 back/drug)   │
 └─────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Follow-up Assistant (Implemented)
+
+The follow-up assistant is implemented as a contextual helper, not as a standalone primary chatbot flow.
+
+- Placement: embedded beside verification results in `/verify`
+- Scope: answers only follow-up questions about the current verification result
+- Context used by backend: full `VerificationResult` snapshot + recent conversation history
+- Persistence: SQLite (`backend/data/verimed.sqlite3`)
+
+### Assistant API Endpoints
+
+- `POST /api/conversations` — create conversation from a verification result snapshot
+- `GET /api/conversations/{conversation_id}` — fetch conversation history and stored verification context
+- `POST /api/conversations/{conversation_id}/messages` — add user message and get assistant response
+- `GET /api/conversations` — list conversation summaries
+- `DELETE /api/conversations/history` — clear all conversation history
 
 ---
 
@@ -89,7 +113,8 @@ Client uploads 3 images
         │
         ▼
 [5] Candidate Matching (matcher_service)
-    - Load products.csv into memory (cached at startup)
+    - Load fda_ghana_drugs_500.csv as primary dataset (cached at startup)
+    - Fallback to products.csv when needed
     - If barcode decoded: attempt direct barcode lookup first
     - If barcode match: shortlist to that product
     - If no barcode match: fuzzy match brand_name, generic_name
@@ -115,6 +140,13 @@ Client uploads 3 images
 [8] Response Assembly
     - Return full VerificationResult JSON to frontend
 ```
+
+### Dataset Source Disclaimer
+
+The primary drug registry dataset in this project was obtained from the Ghana FDA Product Registry page:
+https://fdaghana.gov.gh/programmes/product-registry/
+
+This dataset is used for reference-based risk assessment and does not represent regulatory certification by Ghana FDA.
 
 ---
 
