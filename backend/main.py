@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Warm up cached loaders at startup
+    from services.conversation_service import init_db
     from services.matcher_service import load_products
     from services.scoring_service import load_rules
     from services.ocr_service import get_reader
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     logger.info("========================================")
     logger.info("Loading products and rules into cache...")
     logger.info("========================================")
+    init_db()
     load_products()
     load_rules()
     logger.info("Warming EasyOCR reader...")
@@ -46,12 +48,14 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 from routes.verify import router as verify_router
+from routes.conversation import router as conversation_router
 app.include_router(verify_router, prefix="/api")
+app.include_router(conversation_router, prefix="/api")
 
 @app.get("/")
 def root():

@@ -31,14 +31,17 @@ export interface ScoringSignal {
   field: string;
   passed: boolean;
   weight: number;
+  contribution: number;
   reason: string;
 }
 
 export interface ScoringResult {
   raw_score: number;
+  unclamped_score: number;
   normalized_score: number;
   classification: string;
   signals: ScoringSignal[];
+  total_contribution: number;
   reasons: string[];
 }
 
@@ -56,4 +59,33 @@ export interface VerificationResult {
   reasons: string[];
   explanation: string;
   recommendation: string;
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export interface ConversationResponse {
+  conversation_id: string;
+  request_id: string;
+  created_at: string;
+  verification: VerificationResult;
+  messages: ConversationMessage[];
+}
+
+export interface ConversationSummary {
+  conversation_id: string;
+  request_id: string;
+  created_at: string;
+  identified_product: string | null;
+  classification: string;
+  risk_score: number;
+}
+
+export interface ConversationListResponse {
+  conversations: ConversationSummary[];
 }

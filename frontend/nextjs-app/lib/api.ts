@@ -1,4 +1,8 @@
-import { VerificationResult } from "./types";
+import {
+  ConversationListResponse,
+  ConversationResponse,
+  VerificationResult,
+} from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -39,4 +43,77 @@ export async function verifyMedicine(
   }
 
   return response.json();
+}
+
+export async function startConversation(verification: VerificationResult): Promise<ConversationResponse> {
+  const response = await fetch(`${API_BASE}/api/conversations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verification }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to start conversation (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function sendFollowUpMessage(
+  conversationId: string,
+  message: string
+): Promise<ConversationResponse> {
+  const response = await fetch(`${API_BASE}/api/conversations/${conversationId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+
+  if (!response.ok) {
+    const detail = await response
+      .json()
+      .then((data) => (typeof data?.detail === "string" ? data.detail : null))
+      .catch(() => null);
+    throw new Error(detail ?? `Failed to send follow-up question (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function getConversation(conversationId: string): Promise<ConversationResponse> {
+  const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const detail = await response
+      .json()
+      .then((data) => (typeof data?.detail === "string" ? data.detail : null))
+      .catch(() => null);
+    throw new Error(detail ?? `Failed to load conversation (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function listConversations(limit = 100): Promise<ConversationListResponse> {
+  const response = await fetch(`${API_BASE}/api/conversations?limit=${limit}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load conversations (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function clearAllConversationHistory(): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/conversations/history`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to clear conversation history (HTTP ${response.status})`);
+  }
 }

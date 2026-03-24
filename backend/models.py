@@ -1,4 +1,7 @@
 from __future__ import annotations
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from pydantic import BaseModel
 
 
@@ -54,14 +57,17 @@ class ScoringSignal(BaseModel):
     field: str
     passed: bool
     weight: int
+    contribution: int = 0
     reason: str
 
 
 class ScoringResult(BaseModel):
     raw_score: int = 0
+    unclamped_score: int = 0
     normalized_score: float = 0.0
     classification: str = "cannot_verify"
     signals: list[ScoringSignal] = []
+    total_contribution: int = 0
     reasons: list[str] = []
 
 
@@ -79,3 +85,54 @@ class VerificationResult(BaseModel):
     reasons: list[str] = []
     explanation: str = ""
     recommendation: str = ""
+
+
+class ConversationMessage(BaseModel):
+    id: str
+    conversation_id: str
+    role: str
+    content: str
+    created_at: str
+
+
+class ConversationCreateRequest(BaseModel):
+    verification: VerificationResult
+
+
+class ConversationCreateResponse(BaseModel):
+    conversation_id: str
+    request_id: str
+    created_at: str
+    verification: VerificationResult
+    messages: list[ConversationMessage]
+
+
+class FollowUpMessageRequest(BaseModel):
+    message: str
+
+
+class ConversationResponse(BaseModel):
+    conversation_id: str
+    request_id: str
+    created_at: str
+    verification: VerificationResult
+    messages: list[ConversationMessage]
+
+
+class ConversationSummary(BaseModel):
+    conversation_id: str
+    request_id: str
+    created_at: str
+    identified_product: str | None = None
+    classification: str = "cannot_verify"
+    risk_score: int = 0
+
+
+def new_message(role: str, content: str, conversation_id: str) -> ConversationMessage:
+    return ConversationMessage(
+        id=str(uuid4()),
+        conversation_id=conversation_id,
+        role=role,
+        content=content,
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )

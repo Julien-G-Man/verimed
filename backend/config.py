@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # App
     data_dir: str = "data"
+    sqlite_db_path: str = "data/verimed.sqlite3"
     max_image_size_mb: int = 10
     ocr_min_confidence: float = 0.4
 

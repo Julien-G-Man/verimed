@@ -14,6 +14,9 @@ from models import BarcodeResult, ExtractedFields, MatchResult, ScoringResult, S
 logger = logging.getLogger(__name__)
 
 
+_UNKNOWN_REF_VALUES = {"", "unknown", "none", "n/a", "na", "not available", "nil"}
+
+
 def _barcode_candidates(value: str | None) -> set[str]:
     if not value:
         return set()
@@ -98,6 +101,36 @@ def _classify(score: int, thresholds: dict) -> str:
     return "high_risk"
 
 
+def _has_reference_value(value: str | None) -> bool:
+    if value is None:
+        return False
+    normalized = value.strip().lower()
+    return normalized not in _UNKNOWN_REF_VALUES
+
+
+def _fallback_weight(rules: dict, key: str, default_weight: int) -> int:
+    fallback = rules.get("fallback_field_weights", {})
+    if key in fallback:
+        return int(fallback[key])
+    return max(0, default_weight // 2)
+
+
+def _signal_contribution(signal: ScoringSignal) -> int:
+    if signal.passed and signal.weight > 0:
+        return signal.weight
+    if (not signal.passed) and signal.weight < 0:
+        return signal.weight
+    return 0
+
+
+def _finalize_signals(signals: list[ScoringSignal]) -> int:
+    total = 0
+    for signal in signals:
+        signal.contribution = _signal_contribution(signal)
+        total += signal.contribution
+    return total
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -125,11 +158,14 @@ def score(
 
     if not match.matched or match.product is None:
         reasons.append("No matching product found in the reference dataset.")
+        total_contribution = _finalize_signals(signals)
         return ScoringResult(
             raw_score=0,
+            unclamped_score=0,
             normalized_score=0.0,
             classification="cannot_verify",
             signals=signals,
+            total_contribution=total_contribution,
             reasons=reasons,
         )
 
@@ -161,38 +197,80 @@ def score(
 
     # Strength
     w = weights.get("strength_match", 15)
-    passed = _fuzzy_field_match(fields.strength, product.strength)
-    signals.append(ScoringSignal(field="strength", passed=passed, weight=w,
-                                  reason=f"Strength match: extracted='{fields.strength}', expected='{product.strength}'"))
-    if passed:
-        score_val += w
+    if _has_reference_value(product.strength):
+        passed = _fuzzy_field_match(fields.strength, product.strength)
+        signals.append(ScoringSignal(field="strength", passed=passed, weight=w,
+                                      reason=f"Strength match: extracted='{fields.strength}', expected='{product.strength}'"))
+        if passed:
+            score_val += w
+        else:
+            reasons.append(f"Strength mismatch or not detected (expected '{product.strength}').")
     else:
-        reasons.append(f"Strength mismatch or not detected (expected '{product.strength}').")
+        fallback_w = _fallback_weight(rules, "strength_detected_without_reference", w)
+        detected = bool(fields.strength)
+        signals.append(ScoringSignal(
+            field="strength_observed",
+            passed=detected,
+            weight=fallback_w,
+            reason="Strength detected from packaging text without reference baseline"
+            if detected
+            else "Strength not detected and reference baseline unavailable",
+        ))
+        if detected:
+            score_val += fallback_w
 
     # Dosage form
     w = weights.get("dosage_form_match", 10)
-    passed = bool(fields.dosage_form and fields.dosage_form.lower() in product.dosage_form.lower())
-    signals.append(ScoringSignal(field="dosage_form", passed=passed, weight=w,
-                                  reason=f"Dosage form: extracted='{fields.dosage_form}', expected='{product.dosage_form}'"))
-    if passed:
-        score_val += w
+    if _has_reference_value(product.dosage_form):
+        passed = bool(fields.dosage_form and fields.dosage_form.lower() in product.dosage_form.lower())
+        signals.append(ScoringSignal(field="dosage_form", passed=passed, weight=w,
+                                      reason=f"Dosage form: extracted='{fields.dosage_form}', expected='{product.dosage_form}'"))
+        if passed:
+            score_val += w
+    else:
+        fallback_w = _fallback_weight(rules, "dosage_form_detected_without_reference", w)
+        detected = bool(fields.dosage_form)
+        signals.append(ScoringSignal(
+            field="dosage_form_observed",
+            passed=detected,
+            weight=fallback_w,
+            reason="Dosage form detected from packaging text without reference baseline"
+            if detected
+            else "Dosage form not detected and reference baseline unavailable",
+        ))
+        if detected:
+            score_val += fallback_w
 
     # Manufacturer
     w = weights.get("manufacturer_match", 15)
-    passed = _fuzzy_field_match(fields.manufacturer, product.manufacturer, threshold=60)
-    signals.append(ScoringSignal(field="manufacturer", passed=passed, weight=w,
-                                  reason=f"Manufacturer: extracted='{fields.manufacturer}', expected='{product.manufacturer}'"))
-    if passed:
-        score_val += w
-    else:
-        if not fields.manufacturer:
-            pen = penalties.get("manufacturer_missing", -15)
-            score_val += pen
-            reasons.append("Manufacturer information is missing from the packaging text.")
-            signals.append(ScoringSignal(field="manufacturer_missing", passed=False, weight=pen,
-                                          reason="Manufacturer string absent — penalty applied"))
+    if _has_reference_value(product.manufacturer):
+        passed = _fuzzy_field_match(fields.manufacturer, product.manufacturer, threshold=60)
+        signals.append(ScoringSignal(field="manufacturer", passed=passed, weight=w,
+                                      reason=f"Manufacturer: extracted='{fields.manufacturer}', expected='{product.manufacturer}'"))
+        if passed:
+            score_val += w
         else:
-            reasons.append(f"Manufacturer '{fields.manufacturer}' does not match expected '{product.manufacturer}'.")
+            if not fields.manufacturer:
+                pen = penalties.get("manufacturer_missing", -15)
+                score_val += pen
+                reasons.append("Manufacturer information is missing from the packaging text.")
+                signals.append(ScoringSignal(field="manufacturer_missing", passed=False, weight=pen,
+                                              reason="Manufacturer string absent — penalty applied"))
+            else:
+                reasons.append(f"Manufacturer '{fields.manufacturer}' does not match expected '{product.manufacturer}'.")
+    else:
+        fallback_w = _fallback_weight(rules, "manufacturer_detected_without_reference", w)
+        detected = bool(fields.manufacturer)
+        signals.append(ScoringSignal(
+            field="manufacturer_observed",
+            passed=detected,
+            weight=fallback_w,
+            reason="Manufacturer detected from packaging text without reference baseline"
+            if detected
+            else "Manufacturer not detected and reference baseline unavailable",
+        ))
+        if detected:
+            score_val += fallback_w
 
     # Barcode decoded
     w = weights.get("barcode_decoded", 10)
@@ -269,13 +347,17 @@ def score(
                                           reason="Suspicious characters near brand name"))
 
     # --- Clamp and classify ---
+    unclamped_score = score_val
     score_val = max(0, min(100, score_val))
     classification = _classify(score_val, thresholds)
+    total_contribution = _finalize_signals(signals)
 
     return ScoringResult(
         raw_score=score_val,
+        unclamped_score=unclamped_score,
         normalized_score=float(score_val),
         classification=classification,
         signals=signals,
+        total_contribution=total_contribution,
         reasons=reasons,
     )

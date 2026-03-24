@@ -50,6 +50,14 @@ RECOMMENDATIONS = {
 }
 
 
+FOLLOW_UP_SYSTEM_PROMPT = (
+    "You are a medicine safety assistant answering follow-up questions about a previous risk assessment. "
+    "Use only the provided assessment context and chat history. "
+    "Be transparent about uncertainty, never claim a medicine is definitely real or definitely fake, "
+    "and always include a short pharmacist-safety reminder."
+)
+
+
 def _build_user_message(result_data: dict) -> str:
     payload = {
         "identified_product": result_data.get("identified_product"),
@@ -76,3 +84,22 @@ def generate_explanation(result_data: dict) -> tuple[str, str]:
     except Exception as exc:
         logger.error("LLM explanation call failed: %s — using fallback.", exc)
         return FALLBACK_EXPLANATIONS.get(classification, FALLBACK_EXPLANATIONS["cannot_verify"]), recommendation
+
+
+def generate_follow_up_answer(verification_summary: dict, history: list[dict], user_message: str) -> str:
+    payload = {
+        "verification": verification_summary,
+        "history": history[-8:],
+        "user_message": user_message,
+    }
+    try:
+        return llm_complete(
+            FOLLOW_UP_SYSTEM_PROMPT,
+            json.dumps(payload, ensure_ascii=False),
+            max_tokens=220,
+        )
+    except Exception as exc:
+        logger.error("LLM follow-up call failed: %s — using fallback.", exc)
+        classification = verification_summary.get("classification", "cannot_verify")
+        fallback = FALLBACK_EXPLANATIONS.get(classification, FALLBACK_EXPLANATIONS["cannot_verify"])
+        return f"{fallback} Please consult a pharmacist for personalized advice."
