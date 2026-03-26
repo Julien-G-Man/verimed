@@ -11,6 +11,7 @@ import ResultSkeleton from "@/components/ResultSkeleton";
 import { sendFollowUpMessage, startConversation, verifyMedicine } from "@/lib/api";
 import { ConversationMessage, VerificationResult } from "@/lib/types";
 import Link from "next/link";
+import Image from "next/image";
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -98,19 +99,25 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen page-bg">
-      <header className="bg-white/85 backdrop-blur-sm border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <Link href="/" className="text-gray-400 hover:text-gray-600 text-xl">←</Link>
-        <h1 className="text-base font-semibold text-gray-900">Verify Medicine</h1>
+      <header className="bg-white/85 backdrop-blur-sm border-b border-slate-200 px-4 py-3 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/" className="text-gray-400 hover:text-gray-600 text-xl shrink-0" aria-label="Back to home">←</Link>
+            <Image src="/verimed_logo.png" alt="VeriMed logo" width={32} height={32} className="rounded-md shrink-0" priority />
+            <h1 className="text-sm sm:text-base font-semibold text-gray-900 truncate">Verify Medicine</h1>
+          </div>
+          <span className="hidden sm:inline text-xs px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">3 photos required</span>
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Upload slots */}
         <div className="space-y-3 animate-rise-in max-w-3xl">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">Upload 3 photos of the medicine packaging.</p>
             <button
               onClick={() => setCameraMode(cameraMode ? null : "front")}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 transition-colors"
+              className="w-full sm:w-auto text-xs font-medium px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 transition-colors"
             >
               {cameraMode ? "📷 Hide camera" : "📷 Use camera"}
             </button>
@@ -126,10 +133,10 @@ export default function VerifyPage() {
                   else if (cameraMode === "barcode") setBarcode(file);
                 }}
               />
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   onClick={() => setCameraMode("front")}
-                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
                     cameraMode === "front"
                       ? front
                         ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
@@ -141,7 +148,7 @@ export default function VerifyPage() {
                 </button>
                 <button
                   onClick={() => setCameraMode("back")}
-                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
                     cameraMode === "back"
                       ? back
                         ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
@@ -153,7 +160,7 @@ export default function VerifyPage() {
                 </button>
                 <button
                   onClick={() => setCameraMode("barcode")}
-                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
                     cameraMode === "barcode"
                       ? barcode
                         ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
@@ -178,7 +185,7 @@ export default function VerifyPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="flex flex-col gap-2">
               <ImageUploadZone label="Front" sublabel="Main label" file={front} onChange={setFront} />
               {front && (
@@ -222,7 +229,7 @@ export default function VerifyPage() {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`w-full max-w-2xl py-3 rounded-xl text-sm font-semibold transition-colors
+            className={`w-full max-w-3xl py-3 rounded-xl text-sm font-semibold transition-colors
               ${canSubmit
                 ? "bg-blue-600 hover:bg-blue-700 text-white"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}

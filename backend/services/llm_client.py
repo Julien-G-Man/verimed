@@ -10,8 +10,6 @@ Usage:
 """
 import logging
 
-import httpx
-
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -24,6 +22,8 @@ logger = logging.getLogger(__name__)
 def _call_nvidia(system: str, user: str, max_tokens: int) -> str:
     if not settings.nvidia_openai_api_key:
         raise ValueError("NVIDIA_OPENAI_API_KEY not configured")
+
+    import httpx  # noqa: PLC0415
 
     response = httpx.post(
         settings.nvidia_openai_api_url,
