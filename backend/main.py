@@ -74,4 +74,4 @@ def root():
 
 @app.get("/api/health")
 def health():
-    return {"status": "Verimed API ie healthy..."}
+    return {"status": "ok"}

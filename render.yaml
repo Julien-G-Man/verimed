@@ -29,5 +29,3 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         value: https://your-vercel-domain.vercel.app,https://verimed-api.onrender.com
-      - key: PORT
-        value: 8000

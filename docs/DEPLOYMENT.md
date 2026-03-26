@@ -42,7 +42,6 @@ NVIDIA_OPENAI_MODEL=openai/gpt-oss-20b
 DATA_DIR=data
 DATABASE_URL=<neon-connection-string>
 ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app,https://verimed-api.onrender.com
-PORT=8000
 ```
 
 ### Deploy
