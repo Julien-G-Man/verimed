@@ -24,7 +24,7 @@
 ```
 ANTHROPIC_API_KEY=sk-ant-your-real-key
 NVIDIA_OPENAI_API_KEY=nvapi-your-real-key
-DATABASE_URL=sqlite:///backend/data/verimed.sqlite3
+DATABASE_URL=sqlite:///data/verimed.sqlite3
 ```
 
 **Production (Render Dashboard — set via UI, never in code)**:
@@ -32,7 +32,7 @@ DATABASE_URL=sqlite:///backend/data/verimed.sqlite3
 ANTHROPIC_API_KEY=<set via Render dashboard>
 NVIDIA_OPENAI_API_KEY=<set via Render dashboard>
 DATABASE_URL=<Neon connection string>
-ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app,https://verimed-api.onrender.com
+ALLOWED_ORIGINS=https://verimed-web.netlify.app,https://verimed-api.onrender.com
 ```
 
 ### Database URL Handling:

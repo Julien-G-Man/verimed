@@ -3,7 +3,7 @@
 ## Architecture
 - **Backend**: Render (Python/FastAPI) → `https://verimed-api.onrender.com`
 - **Database**: Neon Postgres 17
-- **Frontend**: Vercel (Next.js)
+- **Frontend**: Netlify (Next.js)
 - **Assets**: Data files bundled with backend
 
 ---
@@ -31,7 +31,7 @@
    - **Name**: `verimed-api`
    - **Environment**: `Python 3.11`
    - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Start Command**: `python run.py`
 
 ### Set Environment Variables in Render:
 ```
@@ -41,7 +41,7 @@ NVIDIA_OPENAI_API_URL=https://integrate.api.nvidia.com/v1/chat/completions
 NVIDIA_OPENAI_MODEL=openai/gpt-oss-20b
 DATA_DIR=data
 DATABASE_URL=<neon-connection-string>
-ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app,https://verimed-api.onrender.com
+ALLOWED_ORIGINS=https://verimed-web.netlify.app,https://verimed-api.onrender.com
 ```
 
 ### Deploy
@@ -50,10 +50,10 @@ ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app,https://verimed-api.onre
 
 ---
 
-## 3. Deploy Frontend to Vercel
+## 3. Deploy Frontend to Netlify
 
 ### Connect repo
-1. Go to [vercel.com](https://vercel.com) → Import Project
+1. Go to [netlify.com](https://www.netlify.com) → Add new site → Import from Git
 2. Select `frontend/nextjs-app` folder
 3. Framework: **Next.js**
 
@@ -64,7 +64,7 @@ NEXT_PUBLIC_API_URL=https://verimed-api.onrender.com
 
 ### Deploy
 - Click Deploy
-- Vercel assigns subdomain (e.g., `your-domain.vercel.app`)
+- Netlify assigns subdomain (production URL: `https://verimed-web.netlify.app`)
 - **Update Render's `ALLOWED_ORIGINS` with this URL**
 
 ---
@@ -93,9 +93,9 @@ find data/reference_images -type f | wc -l
 - [ ] Neon Postgres connection string copied
 - [ ] Render API key generated
 - [ ] GitHub connected to Render
-- [ ] Vercel account created
+- [ ] Netlify account created
 - [ ] `ANTHROPIC_API_KEY` and `NVIDIA_OPENAI_API_KEY` added to both services
-- [ ] `ALLOWED_ORIGINS` includes Vercel domain
+- [ ] `ALLOWED_ORIGINS` includes `https://verimed-web.netlify.app`
 - [ ] Reference images committed to repo
 - [ ] First deploy test: `/api/health` returns `{"status": "ok"}`
 - [ ] Frontend loads and calls backend API
@@ -108,8 +108,8 @@ find data/reference_images -type f | wc -l
 - Logs: `https://dashboard.render.com → verimed-api → Logs`
 - Health checks: Render pings `/` every 30s
 
-### Vercel
-- Logs: `https://vercel.com → Deployments → [latest] → Runtime Logs`
+### Netlify
+- Logs: `https://app.netlify.com → Site settings → Functions/Deploy logs`
 
 ---
 
@@ -118,7 +118,7 @@ find data/reference_images -type f | wc -l
 If you exceed free tier limits:
 - **Render**: Standard plan ($7/mo) for production workloads
 - **Neon**: Pay-as-you-go ($0.10/GB stored)
-- **Vercel**: Automatic scaling (free tier includes up to 100 GB bandwidth/mo)
+- **Netlify**: Automatic scaling on managed infrastructure
 
 ---
 
@@ -127,5 +127,5 @@ If you exceed free tier limits:
 ### Backend (Render)
 - Dashboard → Deployments → Select previous build → Redeploy
 
-### Frontend (Vercel)
+### Frontend (Netlify)
 - Dashboard → Deployments → Select previous build → Redeploy

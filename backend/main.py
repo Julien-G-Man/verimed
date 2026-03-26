@@ -23,7 +23,6 @@ async def lifespan(app: FastAPI):
     from services.matcher_service import load_products
     from services.realtime_cv_service import load_reference_templates
     from services.scoring_service import load_rules
-    from services.ocr_service import get_reader
 
     logger.info("========================================")
     logger.info("Loading products and rules into cache...")
@@ -32,8 +31,18 @@ async def lifespan(app: FastAPI):
     load_products()
     load_rules()
     load_reference_templates()
-    logger.info("Warming EasyOCR reader...")
-    get_reader()
+
+    # EasyOCR model load can exceed memory limits on small instances.
+    # Keep it lazy by default and only warm it up when explicitly enabled.
+    should_warm_ocr = os.getenv("OCR_WARMUP_ON_STARTUP", "false").lower() == "true"
+    if should_warm_ocr:
+        from services.ocr_service import get_reader
+
+        logger.info("Warming EasyOCR reader...")
+        get_reader()
+    else:
+        logger.info("Skipping EasyOCR warm-up at startup (OCR_WARMUP_ON_STARTUP=false).")
+
     logger.info("Startup complete.")
     yield
     logger.info("Shutting down.")
@@ -72,6 +81,6 @@ def root():
     return {"status": "VeriMed API running..."}
 
 
-@app.get("/api/health")
+@app.get("/health")
 def health():
     return {"status": "ok"}

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     max_image_size_mb: int = 10
     ocr_min_confidence: float = 0.4
     
-    allowed_origins: str = "http://localhost:3000,http://localhost:8000,https://verimed-one.vercel.app"
+    allowed_origins: str = "http://localhost:3000,http://localhost:8000,https://verimed-web.netlify.app"
 
 
 settings = Settings()

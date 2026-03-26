@@ -10,7 +10,7 @@ services:
       pip install -q -r requirements.txt
 
     startCommand: |
-      uvicorn main:app --host 0.0.0.0 --port $PORT
+      python run.py
 
     envVars:
       - key: PYTHON_VERSION
@@ -25,7 +25,9 @@ services:
         value: openai/gpt-oss-20b
       - key: DATA_DIR
         value: data
+      - key: OCR_WARMUP_ON_STARTUP
+        value: "false"
       - key: DATABASE_URL
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://your-vercel-domain.vercel.app,https://verimed-api.onrender.com
+        value: https://verimed-web.netlify.app,https://verimed-api.onrender.com
