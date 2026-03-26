@@ -8,7 +8,7 @@ export default function Home() {
           <div className="text-5xl">💊</div>
           <h1 className="text-3xl font-bold text-slate-900">VeriMed</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
-            An AI-powered medicine authenticity risk assessment tool. Upload photos of your medicine packaging to check for warning signs of counterfeiting.
+            An AI-powered medicine authenticity risk assessment tool. Upload or capture photos of your medicine packaging to check for warning signs of counterfeiting.
           </p>
         </div>
 

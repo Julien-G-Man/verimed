@@ -180,3 +180,16 @@ The third outcome is as important as the first two. A system that knows what it 
 - [`DATA_MODEL.md`](./docs/DATA_MODEL.md) — CSV schema, JSON rules format, dataset strategy
 - [`BUILD_PLAN.md`](./docs/BUILD_PLAN.md) — Phased execution plan, team roles, 24-hour sprint guide
 - [`CLAUDE.md`](./docs/CLAUDE.md) — Context file for Claude Code to assist with implementation
+- [`REALTIME_CV.md`](./docs/REALTIME_CV.md) — OpenCV real-time product detection module and integration guide
+
+---
+
+## Real-time CV Endpoint
+
+VeriMed now includes a frame-level OpenCV detection endpoint for camera/live preview workflows:
+
+- `POST /api/realtime/detect`
+- Input: `frame_image` + optional `side` (`front` or `back`)
+- Output: top product detections with confidence and bounding boxes
+
+This endpoint is assistive for real-time UX. Final authenticity risk assessment still comes from the full deterministic `/api/verify` pipeline.

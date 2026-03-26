@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
     # Warm up cached loaders at startup
     from services.conversation_service import init_db
     from services.matcher_service import load_products
+    from services.realtime_cv_service import load_reference_templates
     from services.scoring_service import load_rules
     from services.ocr_service import get_reader
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
     init_db()
     load_products()
     load_rules()
+    load_reference_templates()
     logger.info("Warming EasyOCR reader...")
     get_reader()
     logger.info("Startup complete.")
@@ -54,8 +56,10 @@ app.add_middleware(
 
 from routes.verify import router as verify_router
 from routes.conversation import router as conversation_router
+from routes.realtime_detect import router as realtime_detect_router
 app.include_router(verify_router, prefix="/api")
 app.include_router(conversation_router, prefix="/api")
+app.include_router(realtime_detect_router, prefix="/api")
 
 @app.get("/")
 def root():

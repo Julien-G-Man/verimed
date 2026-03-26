@@ -87,6 +87,32 @@ class VerificationResult(BaseModel):
     recommendation: str = ""
 
 
+class DetectionBox(BaseModel):
+    x: int
+    y: int
+    width: int
+    height: int
+
+
+class RealtimeDetection(BaseModel):
+    product_id: str
+    product_label: str
+    side: str
+    confidence: float
+    good_matches: int
+    inlier_matches: int
+    box: DetectionBox
+
+
+class RealtimeDetectionResponse(BaseModel):
+    request_id: str
+    timestamp: str
+    side: str
+    detections: list[RealtimeDetection] = []
+    reference_templates_loaded: int = 0
+    message: str = ""
+
+
 class ConversationMessage(BaseModel):
     id: str
     conversation_id: str

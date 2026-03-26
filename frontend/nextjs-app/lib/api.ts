@@ -1,6 +1,7 @@
 import {
   ConversationListResponse,
   ConversationResponse,
+  RealtimeDetectionResponse,
   VerificationResult,
 } from "./types";
 
@@ -116,4 +117,32 @@ export async function clearAllConversationHistory(): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to clear conversation history (HTTP ${response.status})`);
   }
+}
+
+export async function detectRealtimeProduct(
+  frameImage: File,
+  side: "front" | "back" | "barcode" = "front",
+  topK = 3
+): Promise<RealtimeDetectionResponse> {
+  const formData = new FormData();
+  formData.append("frame_image", frameImage);
+  formData.append("side", side);
+  formData.append("top_k", String(topK));
+
+  const response = await fetch(`${API_BASE}/api/realtime/detect`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ detail: `Request failed with HTTP ${response.status}` }));
+    const detail = typeof error?.detail === "string"
+      ? error.detail
+      : `Request failed with HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+
+  return response.json();
 }

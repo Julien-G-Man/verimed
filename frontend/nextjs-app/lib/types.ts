@@ -89,3 +89,29 @@ export interface ConversationSummary {
 export interface ConversationListResponse {
   conversations: ConversationSummary[];
 }
+
+export interface DetectionBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface RealtimeDetection {
+  product_id: string;
+  product_label: string;
+  side: "front" | "back" | "barcode";
+  confidence: number;
+  good_matches: number;
+  inlier_matches: number;
+  box: DetectionBox;
+}
+
+export interface RealtimeDetectionResponse {
+  request_id: string;
+  timestamp: string;
+  side: "front" | "back" | "barcode";
+  detections: RealtimeDetection[];
+  reference_templates_loaded: number;
+  message: string;
+}

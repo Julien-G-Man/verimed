@@ -2,6 +2,7 @@
 import { useState } from "react";
 import FollowUpChat from "@/components/FollowUpChat";
 import ImageUploadZone from "@/components/ImageUploadZone";
+import RealtimeCameraPreview from "@/components/RealtimeCameraPreview";
 import ResultCard from "@/components/ResultCard";
 import ExtractedFieldsPanel from "@/components/ExtractedFieldsPanel";
 import ReasonsPanel from "@/components/ReasonsPanel";
@@ -24,6 +25,7 @@ export default function VerifyPage() {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
+  const [cameraMode, setCameraMode] = useState<"front" | "back" | "barcode" | null>(null);
 
   const canSubmit = front && back && barcode && status !== "loading";
 
@@ -103,12 +105,115 @@ export default function VerifyPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Upload slots */}
-        <div className="space-y-3 animate-rise-in max-w-2xl">
-          <p className="text-sm text-gray-500">Upload 3 photos of the medicine packaging.</p>
+        <div className="space-y-3 animate-rise-in max-w-3xl">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-gray-500">Upload 3 photos of the medicine packaging.</p>
+            <button
+              onClick={() => setCameraMode(cameraMode ? null : "front")}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 transition-colors"
+            >
+              {cameraMode ? "📷 Hide camera" : "📷 Use camera"}
+            </button>
+          </div>
+
+          {cameraMode && (
+            <div className="space-y-3">
+              <RealtimeCameraPreview
+                side={cameraMode}
+                onCapture={(file) => {
+                  if (cameraMode === "front") setFront(file);
+                  else if (cameraMode === "back") setBack(file);
+                  else if (cameraMode === "barcode") setBarcode(file);
+                }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCameraMode("front")}
+                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                    cameraMode === "front"
+                      ? front
+                        ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                  }`}
+                >
+                  {front ? "✓ Front" : "Front"}
+                </button>
+                <button
+                  onClick={() => setCameraMode("back")}
+                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                    cameraMode === "back"
+                      ? back
+                        ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                  }`}
+                >
+                  {back ? "✓ Back" : "Back"}
+                </button>
+                <button
+                  onClick={() => setCameraMode("barcode")}
+                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                    cameraMode === "barcode"
+                      ? barcode
+                        ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                  }`}
+                >
+                  {barcode ? "✓ Code" : "Code"}
+                </button>
+              </div>
+              {front && back && barcode && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
+                  <p className="text-xs font-semibold text-emerald-800">✓ All sides captured!</p>
+                  <button
+                    onClick={() => setCameraMode(null)}
+                    className="mt-2 text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    Close camera & verify
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
-            <ImageUploadZone label="Front" sublabel="Main label" file={front} onChange={setFront} />
-            <ImageUploadZone label="Back" sublabel="Ingredients" file={back} onChange={setBack} />
-            <ImageUploadZone label="Barcode" sublabel="QR / barcode" file={barcode} onChange={setBarcode} />
+            <div className="flex flex-col gap-2">
+              <ImageUploadZone label="Front" sublabel="Main label" file={front} onChange={setFront} />
+              {front && (
+                <button
+                  onClick={() => setCameraMode(cameraMode === "front" ? null : "front")}
+                  className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors"
+                >
+                  {cameraMode === "front" ? "Hide camera" : "Retake with camera"}
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <ImageUploadZone label="Back" sublabel="Ingredients" file={back} onChange={setBack} />
+              {back && (
+                <button
+                  onClick={() => setCameraMode(cameraMode === "back" ? null : "back")}
+                  className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors"
+                >
+                  {cameraMode === "back" ? "Hide camera" : "Retake with camera"}
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <ImageUploadZone label="Barcode" sublabel="QR / barcode" file={barcode} onChange={setBarcode} />
+              {barcode && (
+                <button
+                  onClick={() => setCameraMode(cameraMode === "barcode" ? null : "barcode")}
+                  className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors"
+                >
+                  {cameraMode === "barcode" ? "Hide camera" : "Retake with camera"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
