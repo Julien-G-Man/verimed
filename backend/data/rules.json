@@ -21,6 +21,11 @@
     "low_risk": 80,
     "medium_risk": 50
   },
+  "fallback_field_weights": {
+    "strength_detected_without_reference": 7,
+    "dosage_form_detected_without_reference": 5,
+    "manufacturer_detected_without_reference": 7
+  },
   "matching": {
     "fuzzy_cutoff_score": 60,
     "fuzzy_confidence_threshold": 0.55,

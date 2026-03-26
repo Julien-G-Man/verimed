@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
 from config import settings
+from limiter import limiter
 from models.models import RealtimeDetectionResponse
 from services.realtime_cv_service import detect_products_in_frame
 
@@ -31,7 +32,9 @@ async def _read_frame(upload: UploadFile) -> bytes:
 
 
 @router.post("/realtime/detect", response_model=RealtimeDetectionResponse)
+@limiter.limit("30/minute")
 async def realtime_detect(
+    request: Request,
     frame_image: UploadFile = File(...),
     side: str = Form("front"),
     top_k: int = Form(3),

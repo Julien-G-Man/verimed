@@ -1,7 +1,8 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from limiter import limiter
 from models.models import (
     ConversationCreateRequest,
     ConversationCreateResponse,
@@ -13,7 +14,6 @@ from services.conversation_service import (
     clear_all_history,
     create_conversation,
     get_conversation,
-    init_db,
     list_conversations,
     list_messages,
     load_verification,
@@ -25,13 +25,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.on_event("startup")
-def _ensure_db() -> None:
-    init_db()
-
-
 @router.post("/conversations", response_model=ConversationCreateResponse)
-def start_conversation(payload: ConversationCreateRequest):
+@limiter.limit("30/minute")
+def start_conversation(request: Request, payload: ConversationCreateRequest):
     conversation_id, request_id, created_at = create_conversation(payload.verification)
 
     greeting = (
@@ -80,7 +76,8 @@ def get_conversation_history(conversation_id: str):
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=ConversationResponse)
-def post_follow_up(conversation_id: str, payload: FollowUpMessageRequest):
+@limiter.limit("20/minute")
+def post_follow_up(request: Request, conversation_id: str, payload: FollowUpMessageRequest):
     row = get_conversation(conversation_id)
     if not row:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -96,10 +93,8 @@ def post_follow_up(conversation_id: str, payload: FollowUpMessageRequest):
     add_message(conversation_id, "user", text)
     history = list_messages(conversation_id)
 
-    summary = verification.model_dump()
-
     history_payload = [{"role": m.role, "content": m.content} for m in history]
-    answer = generate_follow_up_answer(summary, history_payload, text)
+    answer = generate_follow_up_answer(verification.model_dump(), history_payload, text)
     add_message(conversation_id, "assistant", answer)
 
     messages = list_messages(conversation_id)

@@ -2,8 +2,9 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
+from limiter import limiter
 from models.models import VerificationResult
 from services.barcode_service import decode_barcode
 from services.explanation_service import generate_explanation
@@ -38,7 +39,9 @@ async def _read_and_validate(upload: UploadFile, field_name: str) -> bytes:
 
 
 @router.post("/verify", response_model=VerificationResult)
+@limiter.limit("10/minute")
 async def verify(
+    request: Request,
     front_image: UploadFile = File(...),
     back_image: UploadFile = File(...),
     barcode_image: UploadFile = File(...),

@@ -1,22 +1,44 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pythonjsonlogger import jsonlogger
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from config import settings
+from limiter import limiter
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+
+def _setup_logging() -> None:
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.handlers.clear()
+    handler = logging.StreamHandler()
+    # JSON in production (Render sets PORT), human-readable locally
+    if os.getenv("PORT"):
+        formatter = jsonlogger.JsonFormatter(
+            fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+            rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
+            datefmt="%Y-%m-%dT%H:%M:%SZ",
+        )
+    else:
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+
+
+_setup_logging()
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Warm up cached loaders at startup
     from services.conversation_service import init_db
     from services.matcher_service import load_products
     from services.realtime_cv_service import load_reference_templates
@@ -30,16 +52,13 @@ async def lifespan(app: FastAPI):
     load_rules()
     load_reference_templates()
 
-    # EasyOCR model load can exceed memory limits on small instances.
-    # Keep it lazy by default and only warm it up when explicitly enabled.
     should_warm_ocr = os.getenv("OCR_WARMUP_ON_STARTUP", "false").lower() == "true"
     if should_warm_ocr:
         from services.ocr_service import get_reader
-
         logger.info("Warming EasyOCR reader...")
         get_reader()
     else:
-        logger.info("Skipping EasyOCR warm-up at startup (OCR_WARMUP_ON_STARTUP=false).")
+        logger.info("Skipping EasyOCR warm-up (OCR_WARMUP_ON_STARTUP=false).")
 
     logger.info("Startup complete.")
     yield
@@ -54,11 +73,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS for production
-import os
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000")
-allowed_origins_list = [origin.strip() for origin in allowed_origins_str.split(",")]
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+allowed_origins_list = [o.strip() for o in settings.allowed_origins.split(",")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins_list,
@@ -70,9 +88,11 @@ app.add_middleware(
 from routes.verify import router as verify_router
 from routes.conversation import router as conversation_router
 from routes.realtime_detect import router as realtime_detect_router
+
 app.include_router(verify_router, prefix="/api")
 app.include_router(conversation_router, prefix="/api")
 app.include_router(realtime_detect_router, prefix="/api")
+
 
 @app.get("/")
 def root():
