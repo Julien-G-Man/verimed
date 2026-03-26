@@ -10,8 +10,7 @@ import UploadProgress from "@/components/UploadProgress";
 import ResultSkeleton from "@/components/ResultSkeleton";
 import { sendFollowUpMessage, startConversation, verifyMedicine } from "@/lib/api";
 import { ConversationMessage, VerificationResult } from "@/lib/types";
-import Link from "next/link";
-import Image from "next/image";
+import Navbar from "@/components/Navbar";
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -26,7 +25,8 @@ export default function VerifyPage() {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
-  const [cameraMode, setCameraMode] = useState<"front" | "back" | "barcode" | null>(null);
+  // Show camera by default on first load
+  const [cameraMode, setCameraMode] = useState<"front" | "back" | "barcode" | null>("front");
 
   const canSubmit = front && back && barcode && status !== "loading";
 
@@ -99,28 +99,15 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen page-bg">
-      <header className="bg-white/85 backdrop-blur-sm border-b border-slate-200 px-4 py-3 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link href="/" className="text-gray-400 hover:text-gray-600 text-xl shrink-0" aria-label="Back to home">←</Link>
-            <Image src="/verimed_logo.png" alt="VeriMed logo" width={32} height={32} className="rounded-md shrink-0" priority />
-            <h1 className="text-sm sm:text-base font-semibold text-gray-900 truncate">Verify Medicine</h1>
-          </div>
-          <span className="hidden sm:inline text-xs px-2 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">3 photos required</span>
-        </div>
-      </header>
+      <Navbar anchorPrefix="/" />
 
+      {/* Spacer to push content below navbar */}
+      <div className="h-20 sm:h-24" aria-hidden="true"></div>
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Upload slots */}
-        <div className="space-y-3 animate-rise-in max-w-3xl">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="space-y-3 animate-rise-in max-w-3xl w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
             <p className="text-sm text-gray-500">Upload 3 photos of the medicine packaging.</p>
-            <button
-              onClick={() => setCameraMode(cameraMode ? null : "front")}
-              className="w-full sm:w-auto text-xs font-medium px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 transition-colors"
-            >
-              {cameraMode ? "📷 Hide camera" : "📷 Use camera"}
-            </button>
           </div>
 
           {cameraMode && (
@@ -133,10 +120,10 @@ export default function VerifyPage() {
                   else if (cameraMode === "barcode") setBarcode(file);
                 }}
               />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="w-full flex gap-2 mt-2">
                 <button
                   onClick={() => setCameraMode("front")}
-                  className={`py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`flex-1 py-2 px-1 text-xs font-semibold rounded-lg transition-colors ${
                     cameraMode === "front"
                       ? front
                         ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
@@ -148,7 +135,7 @@ export default function VerifyPage() {
                 </button>
                 <button
                   onClick={() => setCameraMode("back")}
-                  className={`py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`flex-1 py-2 px-1 text-xs font-semibold rounded-lg transition-colors ${
                     cameraMode === "back"
                       ? back
                         ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
@@ -160,7 +147,7 @@ export default function VerifyPage() {
                 </button>
                 <button
                   onClick={() => setCameraMode("barcode")}
-                  className={`py-2 px-3 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`flex-1 py-2 px-1 text-xs font-semibold rounded-lg transition-colors ${
                     cameraMode === "barcode"
                       ? barcode
                         ? "bg-emerald-100 border border-emerald-400 text-emerald-800"
@@ -185,41 +172,19 @@ export default function VerifyPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex flex-col gap-2">
-              <ImageUploadZone label="Front" sublabel="Main label" file={front} onChange={setFront} />
-              {front && (
-                <button
-                  onClick={() => setCameraMode(cameraMode === "front" ? null : "front")}
-                  className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors"
-                >
-                  {cameraMode === "front" ? "Hide camera" : "Retake with camera"}
-                </button>
-              )}
-            </div>
+          <div className="w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-full">
+              <div className="flex flex-col gap-2 min-w-0">
+                <ImageUploadZone label="Front" sublabel="Main label" file={front} onChange={setFront} />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <ImageUploadZone label="Back" sublabel="Ingredients" file={back} onChange={setBack} />
-              {back && (
-                <button
-                  onClick={() => setCameraMode(cameraMode === "back" ? null : "back")}
-                  className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors"
-                >
-                  {cameraMode === "back" ? "Hide camera" : "Retake with camera"}
-                </button>
-              )}
-            </div>
+              <div className="flex flex-col gap-2 min-w-0">
+                <ImageUploadZone label="Back" sublabel="Ingredients" file={back} onChange={setBack} />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <ImageUploadZone label="Barcode" sublabel="QR / barcode" file={barcode} onChange={setBarcode} />
-              {barcode && (
-                <button
-                  onClick={() => setCameraMode(cameraMode === "barcode" ? null : "barcode")}
-                  className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors"
-                >
-                  {cameraMode === "barcode" ? "Hide camera" : "Retake with camera"}
-                </button>
-              )}
+              <div className="flex flex-col gap-2 min-w-0">
+                <ImageUploadZone label="Barcode" sublabel="QR / barcode" file={barcode} onChange={setBarcode} />
+              </div>
             </div>
           </div>
         </div>
@@ -279,7 +244,7 @@ export default function VerifyPage() {
                 />
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  Follow-up assistant is unavailable for this verification result.
+                  Assistant is unavailable for this verification result.
                 </div>
               )}
 

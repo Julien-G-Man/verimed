@@ -70,7 +70,7 @@ export default function FollowUpChat({ messages, sending, onSend, className }: P
   return (
     <section className={`rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-3 ${className ?? ""}`}>
       <div>
-        <h2 className="text-sm font-semibold text-gray-900">Follow-up Conversation</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Ask AI</h2>
         <p className="text-xs text-gray-500 mt-1">
           Ask about the score, missing signals, or what to verify next with a pharmacist.
         </p>

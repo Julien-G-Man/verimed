@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# load_dotenv populates os.environ for libraries that read it directly.
-# config.Settings (pydantic-settings) also reads .env independently.
 load_dotenv()
 
 logging.basicConfig(

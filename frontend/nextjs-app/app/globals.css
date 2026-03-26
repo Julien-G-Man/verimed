@@ -5,9 +5,16 @@
   --foreground: #17212f;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
 }
 
 .page-bg {
@@ -23,6 +30,22 @@ body {
 
 .animate-fade-in {
   animation: fade-in 260ms ease-out;
+}
+
+.anchor-section {
+  scroll-margin-top: 110px;
+}
+
+.hero-section {
+  background-size: cover;
+  background-position: center;
+}
+
+@media (max-width: 639px) {
+  .hero-section {
+    background-size: auto 135%;
+    background-position: center 55%;
+  }
 }
 
 @keyframes rise-in {
