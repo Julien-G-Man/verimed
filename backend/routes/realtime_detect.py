@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from config import settings
-from models import RealtimeDetectionResponse
+from models.models import RealtimeDetectionResponse
 from services.realtime_cv_service import detect_products_in_frame
 
 router = APIRouter()

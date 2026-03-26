@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from models import (
+from models.models import (
     ConversationCreateRequest,
     ConversationCreateResponse,
     ConversationResponse,

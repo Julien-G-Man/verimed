@@ -6,15 +6,23 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from config import settings
-from models import ConversationMessage, ConversationSummary, VerificationResult
+from models.models import ConversationMessage, ConversationSummary, VerificationResult
 
 logger = logging.getLogger(__name__)
 
 
 def _db_path() -> str:
-    path = settings.sqlite_db_path
-    if not os.path.isabs(path):
-        path = os.path.join(settings.data_dir, os.path.basename(path))
+    path = (settings.sqlite_db_path or "").strip()
+
+    if not path:
+        path = os.path.join(settings.data_dir, "verimed.sqlite3")
+    elif not os.path.isabs(path):
+        normalized = os.path.normpath(path)
+        if os.path.dirname(normalized):
+            path = normalized
+        else:
+            path = os.path.join(settings.data_dir, normalized)
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
 

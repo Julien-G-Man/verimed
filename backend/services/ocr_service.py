@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from models import ExtractedFields
+from models.models import ExtractedFields
 from utils.normalization import normalize_text, parse_fields
 from utils.preprocessing import preprocess_for_ocr
 

@@ -7,7 +7,7 @@ from functools import lru_cache
 from rapidfuzz import fuzz, process
 
 from config import settings
-from models import BarcodeResult, ExtractedFields, MatchResult, ProductRecord
+from models.models import BarcodeResult, ExtractedFields, MatchResult, ProductRecord
 
 logger = logging.getLogger(__name__)
 

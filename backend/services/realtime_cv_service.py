@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 from config import settings
-from models import DetectionBox, RealtimeDetection, RealtimeDetectionResponse
+from models.models import DetectionBox, RealtimeDetection, RealtimeDetectionResponse
 from services.matcher_service import load_products
 
 logger = logging.getLogger(__name__)

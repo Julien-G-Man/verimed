@@ -3,7 +3,7 @@ import logging
 import cv2
 import numpy as np
 
-from models import BarcodeResult
+from models.models import BarcodeResult
 from utils.preprocessing import preprocess_for_barcode
 
 logger = logging.getLogger(__name__)

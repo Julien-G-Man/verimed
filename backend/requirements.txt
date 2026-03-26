@@ -5,6 +5,7 @@ pydantic-settings
 python-multipart
 opencv-python-headless
 easyocr
+python-bidi==0.4.2
 pytesseract
 pyzbar
 rapidfuzz

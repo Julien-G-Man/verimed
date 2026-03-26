@@ -9,7 +9,7 @@ import re
 from functools import lru_cache
 
 from config import settings
-from models import BarcodeResult, ExtractedFields, MatchResult, ScoringResult, ScoringSignal
+from models.models import BarcodeResult, ExtractedFields, MatchResult, ScoringResult, ScoringSignal
 
 logger = logging.getLogger(__name__)
 

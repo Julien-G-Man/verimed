@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from models import VerificationResult
+from models.models import VerificationResult
 from services.barcode_service import decode_barcode
 from services.explanation_service import generate_explanation
 from services.matcher_service import load_products, match_product
@@ -100,7 +100,7 @@ async def verify(
         barcode_result = decode_barcode(barcode_bytes)
     except Exception as exc:
         logger.error("[%s] Barcode decode error: %s", request_id, exc)
-        from models import BarcodeResult
+        from models.models import BarcodeResult
         barcode_result = BarcodeResult(decoded=False)
 
     # 6. Product matching
@@ -115,7 +115,7 @@ async def verify(
         )
     except Exception as exc:
         logger.error("[%s] Matching failed: %s", request_id, exc)
-        from models import MatchResult
+        from models.models import MatchResult
         match_result = MatchResult(matched=False, match_method="none", match_confidence=0.0)
 
     # 7. Scoring
@@ -128,7 +128,7 @@ async def verify(
         )
     except Exception as exc:
         logger.error("[%s] Scoring failed: %s", request_id, exc)
-        from models import ScoringResult
+        from models.models import ScoringResult
         scoring_result = ScoringResult(
             raw_score=0,
             normalized_score=0.0,
