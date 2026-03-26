@@ -35,7 +35,7 @@ The LLM is **not** the truth engine. It is the communication layer.
 │  ├── scoring_service.py     (weighted rules)        │
 │  └── explanation_service.py (LLM call)              │
 │  ├── conversation.py        (/api/conversations)    │
-│  └── conversation_service.py (SQLite persistence)   │
+│  └── conversation_service.py (SQLite/Postgres persistence) │
 │                                                     │
 │  Returns: VerificationResult JSON                   │
 └───────────────────┬─────────────────────────────────┘
@@ -46,7 +46,7 @@ The LLM is **not** the truth engine. It is the communication layer.
 │  data/fda_ghana_drugs_500.csv (primary registry data)│
 │  data/products.csv        (legacy curated fallback) │
 │  data/rules.json          (scoring weights/rules)   │
-│  data/verimed.sqlite3     (conversation persistence)│
+│  data/verimed.sqlite3     (local conversation persistence)│
 │  data/reference_images/   (1 front + 1 back/drug)   │
 └─────────────────────────────────────────────────────┘
 ```
@@ -60,7 +60,7 @@ The follow-up assistant is implemented as a contextual helper, not as a standalo
 - Placement: embedded beside verification results in `/verify`
 - Scope: answers only follow-up questions about the current verification result
 - Context used by backend: full `VerificationResult` snapshot + recent conversation history
-- Persistence: SQLite (`backend/data/verimed.sqlite3`)
+- Persistence: SQLite locally (`backend/data/verimed.sqlite3`) or Postgres in production (`DATABASE_URL`)
 
 ### Assistant API Endpoints
 
@@ -131,8 +131,8 @@ Client uploads 3 images
         │
         ▼
 [7] Explanation (explanation_service)
-    - Serialize VerificationResult to structured prompt
-    - Single LLM call (Claude or GPT-4o-mini)
+    - Serialize verification summary to structured prompt
+    - Single LLM call via NVIDIA OpenAI-compatible API, with Anthropic fallback
     - Returns 2–4 sentence user-facing explanation
     - Append recommended action
         │
@@ -221,7 +221,7 @@ class ProductRecord(BaseModel):
 class MatchResult(BaseModel):
     matched: bool
     product: ProductRecord | None
-    match_method: str             # "barcode_exact" | "fuzzy_name" | "keyword" | "none"
+    match_method: str             # "barcode_exact" | "fuzzy_name" | "none"
     match_confidence: float       # 0.0–1.0
 ```
 
@@ -232,14 +232,17 @@ class ScoringSignal(BaseModel):
     field: str
     passed: bool
     weight: int
+    contribution: int
     reason: str
 
 class ScoringResult(BaseModel):
     raw_score: int
+    unclamped_score: int
     normalized_score: float       # 0–100
     classification: str           # "low_risk" | "medium_risk" | "high_risk" | "cannot_verify"
     signals: list[ScoringSignal]
-    reasons: list[str]            # human-readable failure reasons only
+    total_contribution: int
+    reasons: list[str]
 ```
 
 ### Final Verification Result
@@ -309,7 +312,7 @@ Input:  ExtractedFields, BarcodeResult
 Output: MatchResult
 
 Internal steps:
-  1. Load products list (CSV → list[ProductRecord]) — cached in module-level variable
+  1. Load products list (CSV → list[ProductRecord]) — cached via lru_cache and warmed at startup
   2. If barcode decoded and barcode.value is not None:
        - Attempt exact match on products[*].barcode
        - If match found: return match_method="barcode_exact", confidence=1.0
@@ -348,7 +351,7 @@ Output: str (the explanation text)
 
 Internal steps:
   1. Build structured prompt:
-       - System: "You are a medicine safety assistant. Write plain-language summaries of risk assessments. Be honest about uncertainty. Never say a product is definitely real or fake."
+       - System: "You are a medicine safety assistant. Summarize risk assessment results in 2–4 plain sentences. Never say a product is definitely real or definitely fake. Always advise consulting a pharmacist."
        - User: JSON dump of risk_score, classification, reasons, identified_product
   2. Single LLM API call (max_tokens=200)
   3. Return response text
@@ -445,7 +448,7 @@ lib/
 | 400 | Image too blurry / unreadable |
 | 500 | Internal extraction or scoring failure |
 
-### `GET /api/health`
+### `GET /health`
 
 Returns `{ "status": "ok" }`. Used by frontend to check backend is live.
 
@@ -456,7 +459,8 @@ Returns `{ "status": "ok" }`. Used by frontend to check backend is live.
 - Images are processed in memory and not persisted to disk
 - No user authentication required for MVP
 - No PII collected
-- Add rate limiting before any public deployment (FastAPI `slowapi`)
+- Rate limiting is enforced with FastAPI `slowapi`
+- Limits: `/api/verify` → 10/min, `POST /api/conversations` → 30/min, `POST /api/conversations/{id}/messages` → 20/min, `/api/realtime/detect` → 30/min
 - Never log raw image data
 
 ---

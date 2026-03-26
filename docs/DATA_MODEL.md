@@ -2,13 +2,13 @@
 
 ## Philosophy
 
-The data layer is intentionally flat and file-based for the MVP. This means no database setup, no migrations, and no infrastructure overhead during a hackathon. The trade-off is acceptable because:
+The data layer is intentionally simple for the MVP: file-based reference data plus lightweight conversation persistence. This keeps the verification pipeline deterministic and easy to run locally while still allowing production deployment with Postgres-backed conversation storage. The trade-off is acceptable because:
 
-- The reference dataset is small (~10–20 products)
+- The reference dataset is read-only at runtime
 - Data is read-only at runtime (no writes to the dataset)
 - Files are loaded into memory at startup and cached
 
-If VeriMed grows beyond the hackathon, the data layer can be migrated to PostgreSQL with minimal changes to the service interfaces.
+Reference data remains file-based. Conversation persistence already supports SQLite locally and PostgreSQL in production behind the same service interface.
 
 ---
 
@@ -17,7 +17,7 @@ If VeriMed grows beyond the hackathon, the data layer can be migrated to Postgre
 ```
 backend/data/
 ├── fda_ghana_drugs_500.csv — Primary Ghana FDA registry extract (current)
-├── products.csv          — Reference product records
+├── products.csv          — Legacy curated fallback product records
 ├── rules.json            — Scoring weights, regex patterns, thresholds
 ├── verimed.sqlite3       — Conversation persistence store
 └── reference_images/
@@ -38,7 +38,7 @@ The dataset is used as a reference input for risk assessment and should not be i
 
 ## Conversation Persistence (Implemented)
 
-Follow-up assistant conversations are persisted in SQLite at `backend/data/verimed.sqlite3`.
+Follow-up assistant conversations are persisted in SQLite locally at `backend/data/verimed.sqlite3`, or in PostgreSQL when `DATABASE_URL` points to a Postgres instance.
 
 ### Table: `conversations`
 
@@ -66,6 +66,7 @@ Follow-up assistant conversations are persisted in SQLite at `backend/data/verim
 - `ConversationCreateResponse`
 - `FollowUpMessageRequest`
 - `ConversationResponse`
+- `ConversationSummary`
 
 These models are defined in backend models and mirror frontend TypeScript contracts.
 
@@ -141,6 +142,12 @@ Controls the scoring engine. All weights and thresholds can be tuned here withou
     "batch_valid": 5
   },
 
+  "fallback_field_weights": {
+    "strength_detected_without_reference": 7,
+    "dosage_form_detected_without_reference": 5,
+    "manufacturer_detected_without_reference": 7
+  },
+
   "penalties": {
     "critical_keyword_missing": -10,
     "spelling_anomaly": -15,
@@ -156,8 +163,7 @@ Controls the scoring engine. All weights and thresholds can be tuned here withou
 
   "matching": {
     "fuzzy_cutoff_score": 60,
-    "fuzzy_confidence_threshold": 0.55,
-    "barcode_exact_confidence": 1.0
+    "fuzzy_confidence_threshold": 0.55
   },
 
   "ocr": {
@@ -304,4 +310,4 @@ def load_rules() -> dict:
         return json.load(f)
 ```
 
-Both `load_products()` and `load_rules()` should be called during FastAPI startup (`lifespan` event) and cached in application state to avoid file I/O on every request.
+Both `load_products()` and `load_rules()` should be called during the FastAPI `lifespan` startup event and cached to avoid file I/O on every request.

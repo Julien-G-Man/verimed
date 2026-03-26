@@ -6,10 +6,10 @@ Ship a working MVP in 24–48 hours. This document defines the build order, what
 
 ## Implementation Update
 
-This project now includes an implemented follow-up assistant feature that was not in the original MVP plan. The assistant is contextual (result-adjacent), persisted with SQLite, and scoped to post-verification follow-up questions.
+This project now includes an implemented follow-up assistant feature that was not in the original MVP plan. The assistant is contextual (result-adjacent), persisted with SQLite locally or Postgres in production, and scoped to post-verification follow-up questions.
 
 - Frontend: assistant panel embedded in the `/verify` results layout
-- Backend: conversation endpoints and SQLite persistence
+- Backend: conversation endpoints and auto-selected SQLite/Postgres persistence
 - Safety framing retained: assistant is explanatory support, not a certification engine
 
 ---
@@ -43,7 +43,7 @@ Frontend:
 npx create-next-app@latest frontend --ts --tailwind --app
 ```
 
-Milestone: `uvicorn main:app --reload` starts, `/api/health` returns `{ "status": "ok" }`
+Milestone: `uvicorn main:app --reload` starts, `/health` returns `{ "status": "ok" }`
 
 ---
 

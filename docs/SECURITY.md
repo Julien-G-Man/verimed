@@ -24,7 +24,7 @@
 ```
 ANTHROPIC_API_KEY=sk-ant-your-real-key
 NVIDIA_OPENAI_API_KEY=nvapi-your-real-key
-DATABASE_URL=sqlite:///data/verimed.sqlite3
+SQLITE_DB_PATH=data/verimed.sqlite3
 ```
 
 **Production (Render Dashboard — set via UI, never in code)**:
@@ -37,10 +37,10 @@ ALLOWED_ORIGINS=https://verimed-web.netlify.app,https://verimed-api.onrender.com
 
 ### Database URL Handling:
 
-- **Local dev**: SQLite path in `.env` → config.py reads it
+- **Local dev**: use `SQLITE_DB_PATH` in `.env` → config.py reads it
 - **Production on Render**: Neon Postgres connection string set as `DATABASE_URL` env var in Render dashboard
   - Render injects it at runtime
-  - config.py respectfully uses `os.getenv("DATABASE_URL", "...")` as fallback
+  - the conversation service switches to Postgres only when `DATABASE_URL` starts with `postgres://` or `postgresql://`
 
 ### Verification Checklist:
 

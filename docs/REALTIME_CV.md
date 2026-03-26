@@ -17,13 +17,16 @@ Request: `multipart/form-data`
 
 - `frame_image` (required): one camera frame (jpg/png/webp)
 - `side` (optional): `front` or `back` (default `front`)
-- `top_k` (optional): number of detections to return (default `3`)
+- `top_k` (optional): number of detections to return (default `3`, clamped to max `5`)
 
 Response:
 
 - `detections[]`: candidate products with confidence and bounding boxes
+- `request_id`, `timestamp`, `side`: response metadata
 - `reference_templates_loaded`: number of usable reference templates loaded
 - `message`: status hint
+
+Rate limit: `30/minute`
 
 ## Detection algorithm
 

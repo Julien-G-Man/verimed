@@ -24,10 +24,15 @@ verimed/
 │   └── nextjs-app/
 ├── backend/                   — FastAPI application
 │   ├── main.py
-│   ├── models.py              — All Pydantic models
+│   ├── config.py              — Settings via pydantic-settings
+│   ├── limiter.py             — slowapi Limiter instance (shared across routes)
+│   ├── run.py                 — Uvicorn entry point
+│   ├── models/
+│   │   └── models.py          — All Pydantic models
 │   ├── routes/
 │   │   ├── verify.py          — POST /api/verify
-│   │   └── conversation.py    — Conversation endpoints
+│   │   ├── conversation.py    — Conversation endpoints
+│   │   └── realtime_detect.py — POST /api/realtime/detect
 │   ├── services/
 │   │   ├── ocr_service.py
 │   │   ├── barcode_service.py
@@ -35,6 +40,7 @@ verimed/
 │   │   ├── scoring_service.py
 │   │   ├── explanation_service.py
 │   │   ├── llm_client.py
+│   │   ├── realtime_cv_service.py
 │   │   └── conversation_service.py
 │   ├── data/
 │   │   ├── fda_ghana_drugs_500.csv
@@ -61,14 +67,16 @@ verimed/
 | OCR | EasyOCR | Primary. Tesseract (`pytesseract`) as fallback |
 | Barcode/QR | pyzbar | With OpenCV QRCodeDetector as fallback |
 | Fuzzy matching | rapidfuzz | Use `fuzz.token_set_ratio` |
-| Data | CSV + JSON + SQLite + local image folder | SQLite is used only for follow-up conversation persistence |
+| Data | CSV + JSON + SQLite (local) / Postgres (production) + local image folder | SQLite locally; Postgres (Neon) in production via `DATABASE_URL` |
 | LLM | NVIDIA OpenAI-compatible API + Anthropic Claude fallback | Single call per explanation/follow-up turn |
+| Rate limiting | slowapi | 10/min verify, 30/min conversations + realtime, 20/min follow-up messages |
+| Logging | python-json-logger | JSON format in production (when `PORT` env is set), human-readable locally |
 
 ---
 
 ## Data Models
 
-All Pydantic models live in `backend/models.py`. The canonical models are:
+All Pydantic models live in `backend/models/models.py`. The canonical models are:
 
 ```python
 class ExtractedFields(BaseModel):
@@ -200,9 +208,15 @@ class ConversationResponse(BaseModel):
 
 ### Follow-up Assistant
 - Assistant is contextual and embedded in `/verify`; it is not a standalone primary chatbot flow
-- Conversation context is persisted in SQLite (`backend/data/verimed.sqlite3`)
+- Conversation context is persisted in SQLite locally (`backend/data/verimed.sqlite3`) or Postgres in production (via `DATABASE_URL`)
+- `conversation_service.py` auto-detects which backend to use — no code changes needed when switching
 - Follow-up responses use full stored `VerificationResult` plus recent conversation history
 - Allow markdown-style responses (tables/code/list formatting) in assistant output
+
+### Rate Limiting
+- All rate limits are applied via `@limiter.limit(...)` decorator from `backend/limiter.py`
+- `request: Request` must be the first parameter of any rate-limited endpoint
+- Limits: `/api/verify` → 10/min, `/api/conversations` POST → 30/min, `/api/conversations/{id}/messages` → 20/min, `/api/realtime/detect` → 30/min
 
 ### Data Loading
 - Use `functools.lru_cache(maxsize=1)` on `load_products()` and `load_rules()`
@@ -218,7 +232,7 @@ class ConversationResponse(BaseModel):
 - Do not use pages router
 - Do not use `<form>` tags — use `onClick` and `FormData` manually
 - TypeScript strict mode on
-- All types mirror Pydantic models from `backend/models.py` — keep them in `frontend/lib/types.ts`
+- All types mirror Pydantic models from `backend/models/models.py` — keep them in `frontend/lib/types.ts`
 - API calls go through `frontend/lib/api.ts` — no raw fetch calls in components
 - Mobile-first: design at 390px width, then scale up
 - Risk badge colors: green = low_risk, amber = medium_risk, red = high_risk, gray = cannot_verify
@@ -251,6 +265,11 @@ Multi-value fields (`expected_keywords`, `expected_front_text`, `expected_back_t
 ```json
 {
   "field_weights": { ... },
+  "fallback_field_weights": {
+    "strength_detected_without_reference": 7,
+    "dosage_form_detected_without_reference": 5,
+    "manufacturer_detected_without_reference": 7
+  },
   "penalties": { ... },
   "classification_thresholds": { "low_risk": 80, "medium_risk": 50 },
   "matching": { "fuzzy_cutoff_score": 60, "fuzzy_confidence_threshold": 0.55 },
@@ -278,7 +297,7 @@ Multi-value fields (`expected_keywords`, `expected_front_text`, `expected_back_t
 - `400`: Image too blurry or unreadable
 - `500`: Internal error (always return structured error, never expose stack traces)
 
-### `GET /api/health`
+### `GET /health`
 
 **Response:** `{ "status": "ok" }`
 
@@ -289,6 +308,10 @@ Multi-value fields (`expected_keywords`, `expected_front_text`, `expected_back_t
 - `GET /api/conversations/{conversation_id}` — get conversation history + verification snapshot
 - `POST /api/conversations/{conversation_id}/messages` — send follow-up message and get updated conversation
 - `DELETE /api/conversations/history` — clear persisted conversation history
+
+### Realtime Detection
+
+- `POST /api/realtime/detect` — multipart: `frame_image` (UploadFile) + `side` (str, default `"front"`) + `top_k` (int, default `3`, max `5`) → `RealtimeDetectionResponse`
 
 ---
 

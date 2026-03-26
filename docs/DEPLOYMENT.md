@@ -5,6 +5,7 @@
 - **Database**: Neon Postgres 17
 - **Frontend**: Netlify (Next.js)
 - **Assets**: Data files bundled with backend
+- **Local persistence fallback**: SQLite via `SQLITE_DB_PATH` when `DATABASE_URL` is not set to Postgres
 
 ---
 
@@ -41,7 +42,9 @@ NVIDIA_OPENAI_API_URL=https://integrate.api.nvidia.com/v1/chat/completions
 NVIDIA_OPENAI_MODEL=openai/gpt-oss-20b
 DATA_DIR=data
 DATABASE_URL=<neon-connection-string>
+SQLITE_DB_PATH=data/verimed.sqlite3
 ALLOWED_ORIGINS=https://verimed-web.netlify.app,https://verimed-api.onrender.com
+OCR_WARMUP_ON_STARTUP=false
 ```
 
 ### Deploy
@@ -69,12 +72,15 @@ NEXT_PUBLIC_API_URL=https://verimed-api.onrender.com
 
 ---
 
-## 4. Migrate Data (SQLite → Postgres)
+## 4. Conversation Persistence
 
-For now, keep SQLite for conversation persistence:
-- Bundle `backend/data/verimed.sqlite3` with container
-- No schema migration needed for MVP
-- Later: implement `alembic` for Postgres migrations
+The backend auto-selects its conversation storage backend:
+
+- If `DATABASE_URL` starts with `postgres://` or `postgresql://`, conversation history uses Postgres.
+- Otherwise it falls back to SQLite using `SQLITE_DB_PATH`.
+- On startup, `init_db()` creates the needed tables in either backend automatically.
+
+For production, set `DATABASE_URL` to the Neon connection string. For local development, prefer `SQLITE_DB_PATH` and leave `DATABASE_URL` empty unless you explicitly want Postgres.
 
 ---
 
@@ -94,10 +100,10 @@ find data/reference_images -type f | wc -l
 - [ ] Render API key generated
 - [ ] GitHub connected to Render
 - [ ] Netlify account created
-- [ ] `ANTHROPIC_API_KEY` and `NVIDIA_OPENAI_API_KEY` added to both services
+- [ ] `ANTHROPIC_API_KEY` and `NVIDIA_OPENAI_API_KEY` added to the Render backend
 - [ ] `ALLOWED_ORIGINS` includes `https://verimed-web.netlify.app`
 - [ ] Reference images committed to repo
-- [ ] First deploy test: `/api/health` returns `{"status": "ok"}`
+- [ ] First deploy test: `/health` returns `{"status": "ok"}`
 - [ ] Frontend loads and calls backend API
 
 ---
