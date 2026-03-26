@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 export default function Home() {
   return (
     <main className="min-h-screen page-bg relative">
-      <Navbar />
+      <Navbar anchorPrefix="/" sticky />
 
       <section
         className="hero-section w-full min-h-[70vh] sm:min-h-[74vh] animate-rise-in bg-slate-900 flex items-end"
@@ -33,7 +33,7 @@ export default function Home() {
                   Start Verification
                 </Link>
                 <Link
-                  href="#how-it-works"
+                  href="/#how-it-works"
                   className="text-center w-full sm:w-auto bg-white/10 border border-white/35 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-2xl text-sm transition-colors"
                 >
                   How It Works

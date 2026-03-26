@@ -10,6 +10,19 @@ const API_BASE =
     ? "http://localhost:8000"
     : process.env.NEXT_PUBLIC_API_URL || "https://verimed-api.onrender.com";
 
+export async function pingBackendHealth(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE}/health`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function verifyMedicine(
   frontImage: File,
   backImage: File,
