@@ -1,9 +1,97 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://verimed-web.netlify.app/#app",
+      name: "VeriMed",
+      url: "https://verimed-web.netlify.app",
+      description:
+        "AI-powered medicine authenticity risk assessment tool. Upload photos of medicine packaging to get OCR text extraction, barcode verification, Ghana FDA reference matching, and an explainable risk score.",
+      applicationCategory: "HealthApplication",
+      operatingSystem: "Any",
+      browserRequirements: "Requires JavaScript",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      featureList: [
+        "OCR text extraction from medicine packaging",
+        "Barcode and QR code decoding",
+        "Ghana FDA reference dataset matching",
+        "Deterministic weighted risk scoring",
+        "Plain-language AI explanation",
+        "Follow-up assistant for contextual questions",
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://verimed-web.netlify.app/#faq",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Does VeriMed certify medicine as genuine?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "No. VeriMed provides a risk assessment, not a certificate of authenticity. It identifies signals that are consistent or inconsistent with a known product. Only a laboratory or regulatory authority can certify a medicine.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What images should I upload?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Three clear photos: the front label (brand name, strength), the back or ingredients side, and a close-up of the barcode or QR code. Good lighting and a steady hand make a big difference to accuracy.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What does the risk score mean?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "The score runs from 0 to 100 and reflects how closely the packaging details match a verified reference record. Low risk (80+) means strong consistency. Medium risk (50–79) means some signals are off. High risk (below 50) means significant mismatches were found. Cannot verify means the product is not in the reference dataset.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What if no product is matched?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You will get a cannot verify result. This does not mean the medicine is fake — it means VeriMed could not find it in the reference dataset. Treat it as a caution signal and consult a pharmacist before use.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Are my images stored or shared?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "No. Images are processed entirely in memory and discarded immediately after verification. VeriMed does not store, log, or share your uploaded photos.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What should I do if I get a high risk result?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Do not discard the medicine immediately. Note the batch number and expiry date, stop using the product, and report it to your pharmacist or the Ghana FDA. A high risk result means the packaging raised significant warning signs — professional guidance is essential.",
+          },
+        },
+      ],
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <main className="min-h-screen page-bg relative">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar anchorPrefix="/" sticky />
 
       <section

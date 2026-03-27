@@ -8,8 +8,39 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL("https://verimed-web.netlify.app"),
   applicationName: "VeriMed",
-  title: "VeriMed — Medicine Authenticity Check",
-  description: "AI-powered medicine authenticity risk assessment using OCR, barcode decoding, and explainable scoring.",
+  title: {
+    default: "VeriMed — Medicine Authenticity Risk Assessment",
+    template: "%s | VeriMed",
+  },
+  description:
+    "VeriMed is a free AI-powered tool to assess medicine authenticity risk. Upload photos of medicine packaging to get OCR text extraction, barcode verification, Ghana FDA reference matching, and an explainable risk score — instantly, on any device.",
+  keywords: [
+    "medicine authenticity check",
+    "counterfeit medicine detector",
+    "drug verification tool",
+    "medicine barcode scanner",
+    "fake medicine checker",
+    "Ghana FDA drug registry",
+    "medicine risk assessment",
+    "pharmaceutical verification",
+    "medicine packaging check",
+    "OCR medicine scanner",
+    "medicine safety tool",
+    "how to spot fake medicine",
+  ],
+  authors: [{ name: "VeriMed" }],
+  creator: "VeriMed",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -22,16 +53,28 @@ export const metadata: Metadata = {
     apple: "/verimed-og.png",
   },
   openGraph: {
-    title: "VeriMed — Medicine Authenticity Check",
-    description: "AI-powered medicine authenticity risk assessment using OCR, barcode decoding, and explainable scoring.",
+    type: "website",
+    locale: "en_US",
+    url: "https://verimed-web.netlify.app",
+    siteName: "VeriMed",
+    title: "VeriMed — Medicine Authenticity Risk Assessment",
+    description:
+      "Upload medicine packaging photos and get instant risk assessment using OCR, barcode decoding, Ghana FDA reference matching, and explainable scoring. Free — no account needed.",
     images: [
       {
         url: "/verimed-og.png",
         width: 1200,
         height: 630,
-        alt: "VeriMed",
+        alt: "VeriMed — Medicine Authenticity Risk Assessment Tool",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VeriMed — Medicine Authenticity Risk Assessment",
+    description:
+      "Upload medicine packaging photos and get instant risk assessment using OCR, barcode decoding, Ghana FDA reference matching, and explainable scoring.",
+    images: ["/verimed-og.png"],
   },
 };
 
