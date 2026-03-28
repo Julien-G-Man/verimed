@@ -238,7 +238,7 @@ class ScoringSignal(BaseModel):
 class ScoringResult(BaseModel):
     raw_score: int
     unclamped_score: int
-    normalized_score: float       # 0–100
+    normalized_score: float       # 0.0–1.0 (raw_score / 100)
     classification: str           # "low_risk" | "medium_risk" | "high_risk" | "cannot_verify"
     signals: list[ScoringSignal]
     total_contribution: int
@@ -314,6 +314,7 @@ Output: MatchResult
 Internal steps:
   1. Load products list (CSV → list[ProductRecord]) — cached via lru_cache and warmed at startup
   2. If barcode decoded and barcode.value is not None:
+       - Expand barcode value into candidates via utils.normalization.barcode_candidates()
        - Attempt exact match on products[*].barcode
        - If match found: return match_method="barcode_exact", confidence=1.0
   3. Build candidate list via rapidfuzz.process.extract():
@@ -323,6 +324,12 @@ Internal steps:
        - cutoff: 60
   4. Score each candidate for keyword overlap
   5. Return top candidate if confidence > 0.55, else matched=False
+
+FDA dataset notes:
+  - Products loaded from fda_ghana_drugs_500.csv have generic_name="" (empty) — no
+    separate generic name in the registry; avoids double-counting in scoring
+  - Manufacturer strings in the FDA CSV are full postal addresses; these are truncated
+    to company name only (split at " - " or first comma) during load
 ```
 
 ### `scoring_service.py`
@@ -337,10 +344,15 @@ Internal steps:
        - Evaluate condition against extracted vs product fields
        - Accumulate score delta
        - Append ScoringSignal
+       - generic_name signal is skipped when product.generic_name is empty
+         (FDA dataset products have no separate generic name; avoids double-counting
+         brand_name and generic_name as +30 when they are the same string)
   3. Apply penalty rules from rules["penalties"]
+       - keyword_missing penalty is applied once per product match,
+         not once per missing keyword, to prevent unbounded penalty stacking
   4. Clamp final score to [0, 100]
   5. Classify by threshold bands
-  6. Return ScoringResult
+  6. Return ScoringResult (normalized_score = raw_score / 100.0)
 ```
 
 ### `explanation_service.py`
@@ -396,7 +408,7 @@ def preprocess_for_barcode(image: np.ndarray) -> np.ndarray:
 | Barcode matches dataset record | +20 |
 | Expiry detected and valid format | +10 |
 | Batch number detected and valid | +5 |
-| Critical keyword missing | −10 |
+| Critical keyword(s) missing | −10 (single deduction regardless of how many are missing) |
 | Spelling anomaly detected in brand name | −15 |
 | Manufacturer string missing entirely | −15 |
 | Barcode decoded but does NOT match record | −25 |
@@ -410,20 +422,24 @@ All weights are overridable via `rules.json`.
 
 ```
 /app
-  /page.tsx                  — Landing / home
-  /verify/page.tsx           — Main verification flow
+  /page.tsx                      — Landing / home
+  /verify/page.tsx               — Main verification flow + follow-up assistant
 
 components/
-  ImageUploadZone.tsx        — Drag/drop or tap-to-upload for each image slot
-  UploadProgress.tsx         — Shows upload + processing status
-  ResultCard.tsx             — Risk level badge, score, explanation
-  ExtractedFieldsPanel.tsx   — Collapsible: shows what OCR found
-  ReasonsPanel.tsx           — Bullet list of scoring signals
-  RecommendationBanner.tsx   — Call-to-action based on classification
+  ImageUploadZone.tsx            — Drag/drop or tap-to-upload for each image slot
+  RealtimeCameraPreview.tsx      — Live camera stream with per-frame detection overlay
+                                   Shows detected drug name + confidence in top-right corner;
+                                   "Scanning…" pulse when camera is live but no match yet
+  UploadProgress.tsx             — Loading state during API call
+  ResultCard.tsx                 — Risk level badge, score, explanation
+  ExtractedFieldsPanel.tsx       — Collapsible: shows what OCR found
+  ReasonsPanel.tsx               — Bullet list of scoring signals
+  FollowUpChat.tsx               — Embedded assistant panel (result-adjacent, not standalone)
+  Navbar.tsx                     — Top navigation bar
 
 lib/
-  api.ts                     — Typed fetch wrapper for POST /api/verify
-  types.ts                   — TypeScript mirrors of Pydantic models
+  api.ts                         — Typed fetch wrappers for all backend endpoints
+  types.ts                       — TypeScript mirrors of Pydantic models
 ```
 
 ---

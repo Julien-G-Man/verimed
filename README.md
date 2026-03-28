@@ -95,7 +95,7 @@ Counterfeit and substandard medicines are dangerous. Ordinary consumers cannot r
 | Fuzzy matching | rapidfuzz |
 | Data | CSV + JSON + local image folder |
 | Conversation persistence | SQLite |
-| Explanation | Single LLM API call (Claude or OpenAI) |
+| Explanation | Single LLM call — NVIDIA OpenAI-compatible API (primary), Anthropic Claude (fallback) |
 
 ---
 
@@ -117,14 +117,16 @@ verimed/
 │   ├── main.py
 │   ├── routes/
 │   │   ├── verify.py
-│   │   └── conversation.py
+│   │   ├── conversation.py
+│   │   └── realtime_detect.py
 │   ├── services/
 │   │   ├── ocr_service.py
 │   │   ├── barcode_service.py
 │   │   ├── matcher_service.py
 │   │   ├── scoring_service.py
-│   │   └── explanation_service.py
-│   │   └── conversation_service.py
+│   │   ├── explanation_service.py
+│   │   ├── conversation_service.py
+│   │   └── realtime_cv_service.py
 │   ├── data/
 │   │   ├── fda_ghana_drugs_500.csv
 │   │   ├── products.csv
