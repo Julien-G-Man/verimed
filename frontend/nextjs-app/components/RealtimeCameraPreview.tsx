@@ -11,7 +11,9 @@ interface Props {
   onCapture: (file: File) => void;
 }
 
-const POLL_MS = 500;
+// 2 000 ms keeps requests at ~30/min per user, well within the backend rate limit.
+// 500 ms would send 120/min and immediately trigger 429s.
+const POLL_MS = 2000;
 
 export default function RealtimeCameraPreview({ side, onCapture }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);

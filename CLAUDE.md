@@ -222,7 +222,8 @@ class ConversationResponse(BaseModel):
 ### Rate Limiting
 - All rate limits are applied via `@limiter.limit(...)` decorator from `backend/limiter.py`
 - `request: Request` must be the first parameter of any rate-limited endpoint
-- Limits: `/api/verify` → 10/min, `/api/conversations` POST → 30/min, `/api/conversations/{id}/messages` → 20/min, `/api/realtime/detect` → 30/min
+- Limits: `/api/verify` → 10/min, `/api/conversations` POST → 30/min, `/api/conversations/{id}/messages` → 20/min, `/api/realtime/detect` → 60/min
+- The realtime endpoint is polled by the frontend camera every 2 000 ms (~30/min per user). The limit is set to 60/min to give headroom for network jitter and multiple tabs.
 
 ### Data Loading
 - Use `functools.lru_cache(maxsize=1)` on `load_products()` and `load_rules()`

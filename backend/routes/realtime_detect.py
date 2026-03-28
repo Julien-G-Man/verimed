@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
@@ -32,7 +33,7 @@ async def _read_frame(upload: UploadFile) -> bytes:
 
 
 @router.post("/realtime/detect", response_model=RealtimeDetectionResponse)
-@limiter.limit("30/minute")
+@limiter.limit("60/minute")
 async def realtime_detect(
     request: Request,
     frame_image: UploadFile = File(...),
@@ -46,7 +47,10 @@ async def realtime_detect(
     top_k = max(1, min(top_k, 5))
 
     try:
-        detection = detect_products_in_frame(
+        # ORB feature matching + RANSAC is CPU-heavy; run in thread pool
+        # to avoid blocking the async event loop on every camera frame.
+        detection = await asyncio.to_thread(
+            detect_products_in_frame,
             frame_bytes=frame_bytes,
             side=side,
             top_k=top_k,
