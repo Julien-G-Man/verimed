@@ -31,7 +31,7 @@
    - **Root Directory**: `backend`
    - **Name**: `verimed-api`
    - **Environment**: `Python 3.11`
-   - **Build Command**: `pip install -r requirements.txt`
+   - **Build Command**: `apt-get update -qq && apt-get install -y -qq tesseract-ocr libzbar0 && pip install -r requirements.txt`
    - **Start Command**: `python run.py`
 
 ### Set Environment Variables in Render:

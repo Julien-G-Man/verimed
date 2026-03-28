@@ -177,11 +177,15 @@ class ConversationResponse(BaseModel):
 ## Key Implementation Rules
 
 ### OCR
-- Initialize `easyocr.Reader(['en'])` once at module level — it is expensive
-- Filter text blocks below `0.4` confidence
-- Concatenate all remaining text into raw string before parsing
-- Run `preprocess_for_ocr()` on both front and back before passing to EasyOCR
+- Engine is selected automatically at import time: RapidOCR (ONNX Runtime) if `rapidocr_onnxruntime` is installed, else Tesseract
+- **RapidOCR** (`requirements-dev.txt`): ~300MB ONNX models, higher accuracy — recommended for local dev and demos
+- **Tesseract** (`requirements.txt`): C binary, zero Python-side model memory — used in production (fits Render 512MB free tier)
+- Install with `pip install -r requirements-dev.txt` for dev; production installs only `requirements.txt`
+- Tesseract uses `pytesseract.image_to_data()` for per-word confidence (0–100 int → normalised to 0.0–1.0)
+- Filter words below `0.4` confidence; concatenate remaining words into raw string before parsing
+- Run `preprocess_for_ocr()` on both front and back before passing to either engine
 - `extract_fields()` is synchronous and CPU-heavy; call it via `asyncio.to_thread()` inside the async route handler — never call it directly in an `async def` or it blocks the event loop
+- RapidOCR is warmed at startup via the FastAPI `lifespan` event when `ENGINE == "rapidocr"` — no warmup needed for Tesseract
 
 ### Barcode
 - Run `pyzbar.decode()` first
