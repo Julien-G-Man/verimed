@@ -1,9 +1,9 @@
 """
-OCR service using EasyOCR (primary) with graceful fallback.
-The Reader is initialized once at module level — it is expensive to load.
+OCR service using RapidOCR (ONNX Runtime) as primary, pytesseract as fallback.
+The engine is initialised once at module level and warmed at startup via get_engine().
+No PyTorch dependency — onnxruntime is the only ML runtime required.
 """
 import logging
-import warnings
 from typing import Any
 
 import numpy as np
@@ -14,51 +14,38 @@ from utils.preprocessing import preprocess_for_ocr
 
 logger = logging.getLogger(__name__)
 
-# EasyOCR may emit this warning on CPU-only environments via torch DataLoader.
-# It does not affect correctness and can be safely suppressed to reduce log noise.
-warnings.filterwarnings(
-    "ignore",
-    message=".*'pin_memory' argument is set as true but no accelerator is found.*",
-    category=UserWarning,
-)
-
-# ---------------------------------------------------------------------------
-# Module-level EasyOCR reader (loaded once on first import / startup warm-up)
-# ---------------------------------------------------------------------------
-_reader: Any = None  # easyocr.Reader instance
+_engine: Any = None  # RapidOCR instance
 
 
-def get_reader():
-    global _reader
-    if _reader is None:
+def get_engine() -> Any:
+    global _engine
+    if _engine is None:
         try:
-            import easyocr  # noqa: PLC0415
-            logger.info("Initializing EasyOCR reader...")
-            _reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-            logger.info("EasyOCR reader ready.")
+            from rapidocr_onnxruntime import RapidOCR  # noqa: PLC0415
+            logger.info("Initialising RapidOCR engine...")
+            _engine = RapidOCR()
+            logger.info("RapidOCR engine ready.")
         except Exception as exc:
-            logger.error("Failed to initialize EasyOCR: %s", exc)
-            _reader = None
-    return _reader
+            logger.error("Failed to initialise RapidOCR: %s", exc)
+            _engine = None
+    return _engine
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-def _run_easyocr(img: np.ndarray, min_confidence: float = 0.4) -> tuple[str, float]:
+def _run_rapidocr(img: np.ndarray, min_confidence: float = 0.4) -> tuple[str, float]:
     """
-    Run EasyOCR on a preprocessed image.
+    Run RapidOCR on a preprocessed image.
     Returns (raw_text, avg_confidence).
+    result format: list of [box_points, text, score] or None
     """
-    reader = get_reader()
-    if reader is None:
+    engine = get_engine()
+    if engine is None:
         return "", 0.0
 
-    results = reader.readtext(img, detail=1, paragraph=False)
-    # results: list of ([bbox], text, confidence)
-    filtered = [(text, conf) for (_, text, conf) in results if conf >= min_confidence]
+    result, _ = engine(img)
+    if not result:
+        return "", 0.0
 
+    filtered = [(text, score) for (_, text, score) in result if score >= min_confidence]
     if not filtered:
         return "", 0.0
 
@@ -70,18 +57,16 @@ def _run_easyocr(img: np.ndarray, min_confidence: float = 0.4) -> tuple[str, flo
 def _try_tesseract(image_bytes: bytes) -> str:
     """Fallback to pytesseract if available."""
     try:
+        import io  # noqa: PLC0415
+
         import pytesseract  # noqa: PLC0415
         from PIL import Image  # noqa: PLC0415
-        import io  # noqa: PLC0415
+
         img_pil = Image.open(io.BytesIO(image_bytes))
         return pytesseract.image_to_string(img_pil)
     except Exception:
         return ""
 
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 def extract_fields(
     front_bytes: bytes,
@@ -93,15 +78,13 @@ def extract_fields(
     """
     Run OCR on front and back images, parse structured fields.
     """
-    # Preprocess
     front_arr = preprocess_for_ocr(front_bytes)
     back_arr = preprocess_for_ocr(back_bytes)
 
-    # OCR
-    front_raw, front_conf = _run_easyocr(front_arr, min_confidence)
-    back_raw, back_conf = _run_easyocr(back_arr, min_confidence)
+    front_raw, front_conf = _run_rapidocr(front_arr, min_confidence)
+    back_raw, back_conf = _run_rapidocr(back_arr, min_confidence)
 
-    # Fallback if EasyOCR produced nothing
+    # Tesseract fallback if RapidOCR returns nothing
     if not front_raw:
         front_raw = _try_tesseract(front_bytes)
         front_conf = 0.3 if front_raw else 0.0
@@ -112,7 +95,6 @@ def extract_fields(
     front_raw = normalize_text(front_raw)
     back_raw = normalize_text(back_raw)
 
-    # Parse structured fields
     parsed = parse_fields(
         front_text=front_raw,
         back_text=back_raw,

@@ -44,8 +44,9 @@ DATA_DIR=data
 DATABASE_URL=<neon-connection-string>
 SQLITE_DB_PATH=data/verimed.sqlite3
 ALLOWED_ORIGINS=https://verimed-web.netlify.app,https://verimed-api.onrender.com
-OCR_WARMUP_ON_STARTUP=false
 ```
+
+> `OCR_WARMUP_ON_STARTUP` has been removed. The RapidOCR engine is always warmed at startup via the FastAPI lifespan event — no env var needed.
 
 ### Deploy
 - Click Deploy
