@@ -99,7 +99,7 @@ Each row represents one curated reference medicine.
 
 ```csv
 product_id,brand_name,generic_name,strength,dosage_form,manufacturer,barcode,expected_keywords,expected_front_text,expected_back_text,expiry_pattern,batch_pattern,reference_image_front,reference_image_back,ghana_fda_listed,notes
-drug_001,Panadol,Paracetamol,500mg,Tablet,GSK Consumer Healthcare,6001067020077,tablets|paracetamol|store below 30°C|keep out of reach of children,Panadol|500mg|GSK,Paracetamol|dosage|adults|children,\d{2}/\d{4},[A-Z]{2}\d{6},drug_001_front.jpg,drug_001_back.jpg,true,Standard blister pack variant
+drug_001,Panadol,Paracetamol,500mg,Effervescent Tablet,GSK Consumer Healthcare,9300673891303,tablets|paracetamol|effervescent|store below 30|keep out of reach of children,Panadol|500mg|GSK,Paracetamol|dosage|adults|children|effervescent,\d{2}/\d{4},[A-Z]{2}\d{6},drug_001_front.jpg,panadol_paracetamol_500mg_effervescent_back.jpg,true,Effervescent tablet; Australian SKU
 ```
 
 ### Loading in Python
@@ -132,7 +132,7 @@ Controls the scoring engine. All weights and thresholds can be tuned here withou
 {
   "field_weights": {
     "product_name_match": 20,
-    "generic_name_match": 10,
+    "generic_name_match": 10,  // skipped when product.generic_name is empty (FDA products)
     "strength_match": 15,
     "dosage_form_match": 10,
     "manufacturer_match": 15,
@@ -149,7 +149,7 @@ Controls the scoring engine. All weights and thresholds can be tuned here withou
   },
 
   "penalties": {
-    "critical_keyword_missing": -10,
+    "critical_keyword_missing": -10,  // applied once per match, not once per missing keyword
     "spelling_anomaly": -15,
     "manufacturer_missing": -15,
     "barcode_mismatch": -25,
@@ -200,10 +200,19 @@ One front image and one back image per curated product. Used for:
 
 ### Naming Convention
 
+Preferred descriptive format:
+```
+{brand}_{generic}_{strength}_{form}_{side}.jpg
+```
+Example: `panadol_paracetamol_500mg_effervescent_back.jpg`
+
+Legacy format (still accepted):
 ```
 {product_id}_front.jpg
 {product_id}_back.jpg
 ```
+
+The filename must match what is stored in `reference_image_front` / `reference_image_back` in `products.csv`.
 
 ### Image Requirements
 
@@ -237,6 +246,17 @@ Pick products that are:
 | 10 | Maalox | Aluminum/Magnesium Hydroxide | Low |
 
 Start with the "High" priority items. 6–8 products is enough for a compelling demo.
+
+---
+
+## FDA Dataset Loading Behaviour
+
+When loading from `fda_ghana_drugs_500.csv`, the following transformations are applied at load time:
+
+- `generic_name` is set to `""` (empty string) — the registry has no separate INN/generic name column. The scoring engine skips the generic_name signal when empty, preventing the product name being double-counted as both brand and generic (+30 → +20 max).
+- `manufacturer` strings are truncated to company name only. Full postal addresses (e.g. `"Acme Ltd - 12 Main St, Accra"`) are split at ` - ` or the first `,`, keeping only the company portion.
+- `barcode` is set to `None` — the FDA registry does not contain barcodes. Barcode matching is therefore unavailable for FDA-sourced records; all matches fall through to fuzzy name matching.
+- `strength` and `dosage_form` are inferred from the product name where possible. Products without a recognizable unit (mg, ml, etc.) in the name will have empty `strength`.
 
 ---
 

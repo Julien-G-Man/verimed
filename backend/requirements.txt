@@ -4,8 +4,7 @@ pydantic==2.12.5
 pydantic-settings==2.13.1
 python-multipart==0.0.22
 opencv-python-headless==4.13.0.92
-easyocr==1.7.2
-python-bidi==0.6.7
+rapidocr-onnxruntime          # replaces easyocr; uses ONNX Runtime (~40MB) instead of PyTorch (~1.5GB)
 pytesseract==0.3.13
 pyzbar==0.1.9
 rapidfuzz==3.14.3
