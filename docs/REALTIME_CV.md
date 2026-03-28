@@ -53,12 +53,15 @@ This module depends on `reference_image_front` and `reference_image_back` fields
 
 ## Integration pattern for camera preview
 
-Recommended frontend loop:
+Implemented in `components/RealtimeCameraPreview.tsx`:
 
-1. Capture one frame from `<video>` every 300 to 600 ms.
+1. Capture one frame from `<video>` every 500 ms via Canvas API.
 2. Convert frame to Blob/File.
-3. Call `detectRealtimeProduct(frameFile, "front")`.
-4. Draw returned bounding boxes over the preview canvas.
-5. When confidence is high enough, trigger full `/api/verify` capture flow.
+3. Call `detectRealtimeProduct(frameFile, side, topK=3)`.
+4. Render two overlay layers inside the camera view:
+   - **Top-right name card** — frosted glass pill showing the top detection's product label and a confidence bar. Replaces the redundant per-box label.
+   - **Bounding boxes** — lime-green outlines marking where the product was detected in the frame.
+   - **"Scanning…" pill** — shown when the camera is live but no detection has been returned yet.
+5. User taps "Capture" to freeze the frame as a `File` for the full `/api/verify` flow.
 
-This keeps real-time UX responsive while preserving the deterministic full verification pipeline.
+The live name overlay is purely assistive. The deterministic `/api/verify` pipeline remains the source of truth for risk scoring.

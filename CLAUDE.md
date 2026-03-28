@@ -181,6 +181,7 @@ class ConversationResponse(BaseModel):
 - Filter text blocks below `0.4` confidence
 - Concatenate all remaining text into raw string before parsing
 - Run `preprocess_for_ocr()` on both front and back before passing to EasyOCR
+- `extract_fields()` is synchronous and CPU-heavy; call it via `asyncio.to_thread()` inside the async route handler — never call it directly in an `async def` or it blocks the event loop
 
 ### Barcode
 - Run `pyzbar.decode()` first
@@ -189,16 +190,21 @@ class ConversationResponse(BaseModel):
 
 ### Matching
 - Always try barcode exact match first (highest confidence)
+- Barcode candidate expansion lives in `utils/normalization.barcode_candidates()` — shared by both `matcher_service` and `scoring_service`; do not duplicate it
 - Use `rapidfuzz.process.extract()` with `fuzz.token_set_ratio`
 - Cutoff: 60 (from `rules.json`)
 - Pick top candidate only if score > threshold
 - If no match: `MatchResult(matched=False, match_method="none", match_confidence=0.0)`
+- FDA products are loaded with `generic_name=""` and manufacturer truncated to company name only (split at ` - ` or first comma) — do not change this without updating scoring logic
 
 ### Scoring
 - Load weights and penalties from `rules.json` — never hardcode them in Python
 - Clamp final score to `[0, 100]`
+- `normalized_score` = `raw_score / 100.0` — range is 0.0–1.0, not 0–100
 - Classification thresholds: low_risk ≥ 80, medium_risk ≥ 50, else high_risk
 - If `matched=False`: always return `classification="cannot_verify"`, skip scoring
+- Skip the `generic_name` scoring signal when `product.generic_name` is empty — FDA dataset products have `generic_name=""` because the registry has no INN column; scoring it would double-count the brand name (+30 instead of +20)
+- `critical_keyword_missing` penalty is a single deduction applied once per match — do not loop per missing keyword or the penalty becomes unbounded
 
 ### LLM Explanation
 - System prompt: "You are a medicine safety assistant. Summarize risk assessment results in 2–4 plain sentences. Never say a product is definitely real or definitely fake. Always advise consulting a pharmacist."
