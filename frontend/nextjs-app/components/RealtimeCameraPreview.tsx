@@ -46,6 +46,7 @@ export default function RealtimeCameraPreview({ side, onCapture }: Props) {
     }
 
     setIsRunning(false);
+    setDetections([]);
   };
 
   const captureBlob = async (): Promise<Blob | null> => {
@@ -142,6 +143,8 @@ export default function RealtimeCameraPreview({ side, onCapture }: Props) {
     }
   };
 
+  const topDetection: RealtimeDetection | null = detections[0] ?? null;
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -157,21 +160,104 @@ export default function RealtimeCameraPreview({ side, onCapture }: Props) {
       <div className="relative overflow-hidden rounded-xl border border-slate-300 bg-slate-900 aspect-video">
         <video ref={videoRef} muted playsInline className="h-full w-full object-cover" />
 
+        {/* ── Top-right live name overlay ── */}
+        {isRunning && (
+          <div className="absolute top-3 right-3 z-10 pointer-events-none">
+            {topDetection ? (
+              /* Drug name card */
+              <div
+                className="rounded-2xl px-3 py-2.5 flex flex-col items-end gap-1"
+                style={{
+                  background: "rgba(0, 0, 0, 0.72)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  minWidth: 148,
+                  maxWidth: 210,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.13em",
+                    color: "rgba(255,255,255,0.45)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    lineHeight: 1,
+                  }}
+                >
+                  Detected
+                </span>
+                <span
+                  className="text-white font-bold text-right leading-snug"
+                  style={{
+                    fontSize: 13,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    maxWidth: 186,
+                  }}
+                >
+                  {topDetection.product_label || topDetection.product_id}
+                </span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div
+                    className="rounded-full overflow-hidden"
+                    style={{ width: 52, height: 3, background: "rgba(255,255,255,0.15)" }}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.round(topDetection.confidence * 100)}%`,
+                        background: "#a3e635",
+                        transition: "width 0.4s ease",
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="tabular-nums font-bold"
+                    style={{ fontSize: 10, color: "#a3e635" }}
+                  >
+                    {Math.round(topDetection.confidence * 100)}%
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Scanning pill */
+              <div
+                className="rounded-full flex items-center gap-1.5 px-2.5 py-1.5"
+                style={{
+                  background: "rgba(0, 0, 0, 0.50)",
+                  backdropFilter: "blur(6px)",
+                  WebkitBackdropFilter: "blur(6px)",
+                }}
+              >
+                <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-slate-500" />
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+                  Scanning
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bounding boxes — spatial reference only, label is in the corner overlay */}
         {detections.map((det) => (
           <div
             key={`${det.product_id}-${det.box.x}-${det.box.y}`}
-            className="absolute border-2 border-lime-400 bg-lime-500/10"
+            className="absolute rounded-sm"
             style={{
               left: `${(det.box.x / 1280) * 100}%`,
               top: `${(det.box.y / 720) * 100}%`,
               width: `${(det.box.width / 1280) * 100}%`,
               height: `${(det.box.height / 720) * 100}%`,
+              border: "2px solid rgba(163, 230, 53, 0.8)",
+              background: "rgba(163, 230, 53, 0.08)",
             }}
-          >
-            <div className="absolute -top-6 left-0 whitespace-nowrap rounded bg-lime-500 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
-              {det.product_label || det.product_id} • {(det.confidence * 100).toFixed(0)}%
-            </div>
-          </div>
+          />
         ))}
       </div>
 
