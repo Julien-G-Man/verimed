@@ -177,11 +177,12 @@ class ConversationResponse(BaseModel):
 ## Key Implementation Rules
 
 ### OCR
-- Initialize `easyocr.Reader(['en'])` once at module level — it is expensive
-- Filter text blocks below `0.4` confidence
-- Concatenate all remaining text into raw string before parsing
-- Run `preprocess_for_ocr()` on both front and back before passing to EasyOCR
+- Primary engine is Tesseract via `pytesseract.image_to_data()` — C binary, no Python-side model in memory, safe on 512MB instances
+- Filter words below `0.4` confidence using per-word scores from `image_to_data()` (Tesseract returns 0–100 int; normalise to 0.0–1.0)
+- Concatenate all remaining words into raw string before parsing
+- Run `preprocess_for_ocr()` on both front and back before passing to Tesseract
 - `extract_fields()` is synchronous and CPU-heavy; call it via `asyncio.to_thread()` inside the async route handler — never call it directly in an `async def` or it blocks the event loop
+- No startup warmup needed — Tesseract is a subprocess call with no load cost
 
 ### Barcode
 - Run `pyzbar.decode()` first

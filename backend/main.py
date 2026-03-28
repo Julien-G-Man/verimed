@@ -52,13 +52,6 @@ async def lifespan(app: FastAPI):
     load_rules()
     load_reference_templates()
 
-    # Always warm the OCR engine at startup so the first real request
-    # doesn't pay the model-load cost. RapidOCR downloads its ONNX models
-    # on first construction; subsequent calls are instant.
-    from services.ocr_service import get_engine
-    logger.info("Warming RapidOCR engine...")
-    get_engine()
-
     logger.info("Startup complete.")
     yield
     logger.info("Shutting down.")
