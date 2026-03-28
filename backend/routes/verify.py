@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -85,9 +86,10 @@ async def verify(
     all_keywords = list({kw for p in products for kw in p.expected_keywords})
     all_brands = [p.brand_name for p in products]
 
-    # 4. OCR extraction
+    # 4. OCR extraction — run in thread pool to avoid blocking the async event loop
     try:
-        extraction = extract_fields(
+        extraction = await asyncio.to_thread(
+            extract_fields,
             front_bytes=front_bytes,
             back_bytes=back_bytes,
             min_confidence=min_conf,

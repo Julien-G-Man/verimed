@@ -8,6 +8,7 @@ from rapidfuzz import fuzz, process
 
 from config import settings
 from models.models import BarcodeResult, ExtractedFields, MatchResult, ProductRecord
+from utils.normalization import barcode_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,15 @@ def _infer_dosage_form(name: str) -> str:
     return "Unknown"
 
 
+def _clean_manufacturer(raw: str) -> str:
+    """Strip street address from manufacturer strings like 'Acme Ltd - 12 Main St, City'."""
+    if " - " in raw:
+        return raw.split(" - ")[0].strip()
+    if "," in raw:
+        return raw.split(",")[0].strip()
+    return raw.strip()[:100]
+
+
 def _keywords_from_name(name: str) -> list[str]:
     tokens = re.findall(r"[A-Za-z][A-Za-z0-9\-]{2,}", name)
     seen: set[str] = set()
@@ -71,10 +81,10 @@ def _build_record_from_fda_row(row: dict, idx: int, default_batch_pattern: str, 
     return ProductRecord(
         product_id=f"fda_gh_{idx:05d}",
         brand_name=product_name,
-        generic_name=product_name,
+        generic_name="",  # FDA registry has no separate generic name; avoids double-counting in scoring
         strength=_infer_strength(product_name),
         dosage_form=_infer_dosage_form(product_name),
-        manufacturer=manufacturer or "Unknown",
+        manufacturer=_clean_manufacturer(manufacturer) if manufacturer else "Unknown",
         barcode=None,
         expected_keywords=_keywords_from_name(product_name),
         expected_front_text=[product_name],
@@ -127,29 +137,6 @@ def _load_legacy_products(csv_path: str) -> tuple[ProductRecord, ...]:
     return tuple(products)
 
 
-def _barcode_candidates(value: str | None) -> list[str]:
-    """Return candidate barcode strings extracted from decoded barcode/QR payload."""
-    if not value:
-        return []
-
-    raw = value.strip()
-    if not raw:
-        return []
-
-    candidates = {raw}
-
-    # Whole-payload digits (e.g., formatted barcode with separators)
-    digits_only = re.sub(r"\D", "", raw)
-    if len(digits_only) >= 8:
-        candidates.add(digits_only)
-
-    # Numeric segments found inside QR URLs or structured payloads.
-    for match in re.findall(r"\d{8,14}", raw):
-        candidates.add(match)
-
-    # Keep stable order: longer candidates first.
-    return sorted(candidates, key=len, reverse=True)
-
 
 @lru_cache(maxsize=1)
 def load_products() -> tuple:
@@ -174,7 +161,7 @@ def load_products() -> tuple:
 
 
 def _barcode_exact_match(barcode_value: str, products: tuple) -> ProductRecord | None:
-    candidates = _barcode_candidates(barcode_value)
+    candidates = barcode_candidates(barcode_value)
     logger.debug("Barcode/QR candidates for matching: %s", candidates)
     for p in products:
         if not p.barcode:
