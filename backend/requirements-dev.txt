@@ -1,0 +1,11 @@
+# Development dependencies — extends production requirements.
+# Includes RapidOCR for higher OCR accuracy on localhost demos.
+# RapidOCR loads ~300MB of ONNX models into Python memory, which exceeds
+# Render's 512MB free-tier limit, so it is intentionally excluded from
+# requirements.txt. The OCR service auto-detects which engine is installed.
+#
+# Usage:
+#   pip install -r requirements-dev.txt
+#
+-r requirements.txt
+rapidocr-onnxruntime

@@ -52,6 +52,15 @@ async def lifespan(app: FastAPI):
     load_rules()
     load_reference_templates()
 
+    from services.ocr_service import ENGINE, get_engine
+    logger.info("OCR engine: %s", ENGINE)
+    if ENGINE == "rapidocr":
+        logger.info("Warming RapidOCR engine at startup...")
+        get_engine()
+        logger.info("RapidOCR warmup complete.")
+    else:
+        logger.info("Tesseract selected — no Python-side warmup needed.")
+
     logger.info("Startup complete.")
     yield
     logger.info("Shutting down.")
