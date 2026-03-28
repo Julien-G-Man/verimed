@@ -15,6 +15,7 @@ SYSTEM_PROMPT = (
     "Summarize risk assessment results in 2–4 plain sentences. "
     "Never say a product is definitely real or definitely fake. "
     "Always advise consulting a pharmacist or healthcare professional."
+    "Always keep answers concise and brief."
 )
 
 FALLBACK_EXPLANATIONS = {
@@ -79,7 +80,7 @@ def generate_explanation(result_data: dict) -> tuple[str, str]:
 
     try:
         user_msg = _build_user_message(result_data)
-        explanation = llm_complete(SYSTEM_PROMPT, user_msg, max_tokens=200)
+        explanation = llm_complete(SYSTEM_PROMPT, user_msg, max_tokens=300)
         return explanation, recommendation
     except Exception as exc:
         logger.error("LLM explanation call failed: %s — using fallback.", exc)
@@ -96,7 +97,7 @@ def generate_follow_up_answer(verification_summary: dict, history: list[dict], u
         return llm_complete(
             FOLLOW_UP_SYSTEM_PROMPT,
             json.dumps(payload, ensure_ascii=False),
-            max_tokens=220,
+            max_tokens=320,
         )
     except Exception as exc:
         logger.error("LLM follow-up call failed: %s — using fallback.", exc)
