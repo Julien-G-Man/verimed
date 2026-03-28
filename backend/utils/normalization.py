@@ -8,6 +8,22 @@ from .regex_patterns import (
 )
 
 
+def barcode_candidates(value: str | None) -> list[str]:
+    """Return candidate barcode strings from a decoded barcode/QR payload, longest first."""
+    if not value:
+        return []
+    raw = value.strip()
+    if not raw:
+        return []
+    candidates: set[str] = {raw}
+    digits_only = re.sub(r"\D", "", raw)
+    if len(digits_only) >= 8:
+        candidates.add(digits_only)
+    for m in re.findall(r"\d{8,14}", raw):
+        candidates.add(m)
+    return sorted(candidates, key=len, reverse=True)
+
+
 def normalize_text(raw: str) -> str:
     # Normalize OCR output while preserving useful separators.
     text = raw.replace("\r", "\n")
@@ -64,10 +80,11 @@ def extract_manufacturer(text: str) -> str | None:
 def extract_brand_name(front_text: str, known_brands: list[str] | None = None) -> str | None:
     if known_brands:
         lower = front_text.lower()
-        for brand in known_brands:
+        # Sort longest first so specific names win over shorter substrings (e.g. "Panadol Extra" before "Panadol")
+        for brand in sorted(known_brands, key=len, reverse=True):
             if brand.lower() in lower:
                 return brand
-    lines = [l.strip() for l in front_text.splitlines() if l.strip()]
+    lines = [line.strip() for line in front_text.splitlines() if line.strip()]
     if lines:
         return lines[0]
     return None

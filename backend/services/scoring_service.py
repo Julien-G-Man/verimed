@@ -10,30 +10,12 @@ from functools import lru_cache
 
 from config import settings
 from models.models import BarcodeResult, ExtractedFields, MatchResult, ScoringResult, ScoringSignal
+from utils.normalization import barcode_candidates as _barcode_candidates_util
 
 logger = logging.getLogger(__name__)
 
 
 _UNKNOWN_REF_VALUES = {"", "unknown", "none", "n/a", "na", "not available", "nil"}
-
-
-def _barcode_candidates(value: str | None) -> set[str]:
-    if not value:
-        return set()
-
-    raw = value.strip()
-    if not raw:
-        return set()
-
-    candidates = {raw}
-    digits_only = re.sub(r"\D", "", raw)
-    if len(digits_only) >= 8:
-        candidates.add(digits_only)
-
-    for match in re.findall(r"\d{8,14}", raw):
-        candidates.add(match)
-
-    return candidates
 
 
 def _barcode_match_detail(decoded_value: str | None, expected_value: str | None) -> tuple[bool, str | None, set[str]]:
@@ -44,7 +26,7 @@ def _barcode_match_detail(decoded_value: str | None, expected_value: str | None)
     if not expected:
         return False, None, set()
 
-    candidates = _barcode_candidates(decoded_value)
+    candidates = set(_barcode_candidates_util(decoded_value))
     if expected in candidates:
         return True, expected, candidates
 
@@ -185,15 +167,16 @@ def score(
     else:
         reasons.append(f"Brand name '{product.brand_name}' was not found in the extracted text.")
 
-    # Generic name
+    # Generic name — skip if not available (avoids double-counting when brand_name == generic_name)
     w = weights.get("generic_name_match", 10)
-    passed = product.generic_name.lower() in combined.lower()
-    signals.append(ScoringSignal(field="generic_name", passed=passed, weight=w,
-                                  reason=f"Generic name '{product.generic_name}' {'found' if passed else 'not found'}"))
-    if passed:
-        score_val += w
-    else:
-        reasons.append(f"Generic name '{product.generic_name}' was not found in the extracted text.")
+    if product.generic_name:
+        passed = product.generic_name.lower() in combined.lower()
+        signals.append(ScoringSignal(field="generic_name", passed=passed, weight=w,
+                                      reason=f"Generic name '{product.generic_name}' {'found' if passed else 'not found'}"))
+        if passed:
+            score_val += w
+        else:
+            reasons.append(f"Generic name '{product.generic_name}' was not found in the extracted text.")
 
     # Strength
     w = weights.get("strength_match", 15)
@@ -321,15 +304,15 @@ def score(
         score_val += w
 
     # --- Required keyword check ---
+    # Apply once regardless of how many keywords are missing to prevent unbounded penalty stacking
     req_kws = required_kw.get(product.product_id, product.expected_keywords)
     missing_kws = [kw for kw in req_kws if kw.lower() not in combined.lower()]
     if missing_kws:
         pen = penalties.get("critical_keyword_missing", -10)
-        for kw in missing_kws:
-            score_val += pen
-            reasons.append(f"Required keyword '{kw}' missing from packaging text.")
-            signals.append(ScoringSignal(field="keyword_missing", passed=False, weight=pen,
-                                          reason=f"Keyword '{kw}' not found"))
+        score_val += pen
+        reasons.append(f"Required keywords missing from packaging text: {', '.join(missing_kws)}.")
+        signals.append(ScoringSignal(field="keyword_missing", passed=False, weight=pen,
+                                      reason=f"Keywords not found: {', '.join(missing_kws)}"))
 
     # --- Spelling anomaly heuristic ---
     # Simple check: if brand name appears with unexpected characters nearby
@@ -355,7 +338,7 @@ def score(
     return ScoringResult(
         raw_score=score_val,
         unclamped_score=unclamped_score,
-        normalized_score=float(score_val),
+        normalized_score=round(score_val / 100.0, 4),
         classification=classification,
         signals=signals,
         total_contribution=total_contribution,
