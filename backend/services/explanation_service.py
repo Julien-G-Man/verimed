@@ -7,6 +7,11 @@ import json
 import logging
 
 from services.llm_client import complete as llm_complete
+from services.knowledge_service import (
+    format_knowledge_context,
+    is_platform_question,
+    retrieve_platform_knowledge,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +93,14 @@ def generate_explanation(result_data: dict) -> tuple[str, str]:
 
 
 def generate_follow_up_answer(verification_summary: dict, history: list[dict], user_message: str) -> str:
+    system_prompt = FOLLOW_UP_SYSTEM_PROMPT
+
+    if is_platform_question(user_message):
+        sections = retrieve_platform_knowledge(user_message, top_k=3)
+        knowledge_block = format_knowledge_context(sections)
+        if knowledge_block:
+            system_prompt = f"{FOLLOW_UP_SYSTEM_PROMPT}\n\n{knowledge_block}"
+
     payload = {
         "verification": verification_summary,
         "history": history[-8:],
@@ -95,7 +108,7 @@ def generate_follow_up_answer(verification_summary: dict, history: list[dict], u
     }
     try:
         return llm_complete(
-            FOLLOW_UP_SYSTEM_PROMPT,
+            system_prompt,
             json.dumps(payload, ensure_ascii=False),
             max_tokens=320,
         )

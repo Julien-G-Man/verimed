@@ -1,0 +1,70 @@
+{
+  "sections": [
+    {
+      "id": "overview",
+      "title": "What is VeriMed?",
+      "keywords": ["verimed", "what", "app", "purpose", "overview", "platform", "about", "is", "tool", "application", "does"],
+      "content": "VeriMed is a mobile-friendly web application for medicine authenticity risk assessment. Users upload three photos of a medicine package — the front, the back, and the barcode or QR code — and VeriMed analyses the images to return a risk classification and a plain-language explanation. VeriMed is a risk assessment tool, not a regulatory certification system. It can tell you if packaging signals are consistent or inconsistent with known reference data, but it cannot guarantee a medicine is genuine or counterfeit. Always consult a pharmacist if you have concerns."
+    },
+    {
+      "id": "how_it_works",
+      "title": "How does VeriMed work?",
+      "keywords": ["how", "works", "process", "pipeline", "steps", "analyse", "analyze", "scan", "check", "verify", "detection", "mechanism"],
+      "content": "VeriMed runs a deterministic pipeline on your uploaded images: (1) Images are validated and preprocessed with contrast enhancement and noise reduction. (2) Text is extracted from the front and back images using OCR (optical character recognition). (3) The barcode or QR code is decoded. (4) Extracted text is parsed into structured fields: brand name, generic name, strength, dosage form, manufacturer, batch number, and expiry date. (5) These fields are matched against a reference dataset of registered medicines. (6) A consistency score is calculated using weighted rules — no machine learning guessing, just rule-based signal comparison. (7) An AI language model converts the score and signals into a short plain-language explanation. The LLM never makes the risk decision; the scoring is always deterministic."
+    },
+    {
+      "id": "risk_classifications",
+      "title": "Risk classifications explained",
+      "keywords": ["risk", "classification", "low", "medium", "high", "cannot_verify", "cannot", "verify", "score", "level", "result", "green", "amber", "red", "gray", "grey", "color", "colour", "badge", "mean", "means"],
+      "content": "VeriMed returns one of four risk classifications: LOW RISK (score ≥ 80) — packaging signals are strongly consistent with the reference record. The product appears legitimate, but this is not a guarantee. MEDIUM RISK (score 50–79) — some signals match but notable discrepancies were found. Exercise caution and consult a pharmacist before use. HIGH RISK (score < 50) — significant inconsistencies detected, such as a barcode mismatch, missing keywords, or manufacturer anomaly. Do not use without consulting a pharmacist. CANNOT VERIFY — the product could not be matched against any entry in the reference dataset. This does not mean it is fake, but it could not be verified as genuine. Consult a pharmacist."
+    },
+    {
+      "id": "scoring_signals",
+      "title": "What signals contribute to the score?",
+      "keywords": ["signal", "signals", "score", "scoring", "weight", "weights", "factor", "factors", "barcode", "name", "strength", "manufacturer", "expiry", "batch", "keyword", "penalty", "points", "contribution"],
+      "content": "The risk score (0–100) is built from these signals: +20 for product name match, +10 for generic name match, +15 for strength match, +10 for dosage form match, +15 for manufacturer match, +10 for barcode successfully decoded, +20 for barcode matching the reference record, +10 for a valid expiry date format, +5 for a valid batch number format. Penalties: −25 if barcode decoded but does not match the reference record, −15 for a detected spelling anomaly in the brand name, −15 if the manufacturer string is entirely missing, −10 if critical keywords are absent, −20 if no product match is found at all. All weights are configurable and can be tuned without changing the application code."
+    },
+    {
+      "id": "dataset",
+      "title": "What data does VeriMed check against?",
+      "keywords": ["dataset", "data", "database", "reference", "source", "ghana", "fda", "registry", "products", "drugs", "medicines", "listed", "records", "registered"],
+      "content": "VeriMed's primary reference dataset is derived from the Ghana Food and Drugs Authority (FDA) Product Registry (fdaghana.gov.gh). It contains around 500 registered drug records. A curated supplementary dataset covers additional products with richer field data including barcodes and keyword lists. Products not present in either dataset will return a 'cannot verify' result — this is expected and does not mean the product is counterfeit. The dataset is used for reference-based risk assessment only and does not represent formal regulatory certification by Ghana FDA."
+    },
+    {
+      "id": "ocr_accuracy",
+      "title": "OCR and image quality",
+      "keywords": ["ocr", "image", "quality", "photo", "picture", "blurry", "blur", "accurate", "accuracy", "text", "read", "reading", "scan", "camera", "lighting", "tips", "resolution", "clear"],
+      "content": "VeriMed extracts text using OCR (optical character recognition). Image quality directly affects detection accuracy. For best results: photograph in good, even lighting with no harsh shadows; hold the camera steady to avoid motion blur; capture the full face of the packaging without extreme angles; keep the barcode centred and undamaged. Images below a minimum sharpness threshold will be rejected with a 'too blurry' error. Text confidence below 40% is filtered out before field parsing. VeriMed performs internal preprocessing (contrast normalization, noise reduction, sharpening) to compensate for moderate quality issues, but very poor photos will still degrade accuracy."
+    },
+    {
+      "id": "limitations",
+      "title": "Limitations of VeriMed",
+      "keywords": ["limitation", "limitations", "limit", "caveat", "caveats", "cannot", "false", "positive", "negative", "wrong", "cloned", "packaging", "copy", "counterfeit", "fake", "guarantee", "accurate"],
+      "content": "VeriMed has the following known limitations: (1) A cloned counterfeit that copies all text, barcode, and packaging faithfully could score as low risk — the system cannot detect perfect visual copies. (2) Products not in the reference dataset always return 'cannot verify', regardless of whether they are genuine. (3) OCR accuracy degrades on glossy packaging, rotated or stylised text, or highly compressed images. (4) Fuzzy name matching can produce false positives if two products share similar names. (5) The dataset currently covers primarily Ghana-market registered products; products from other markets may not be found. VeriMed is a screening tool to flag obvious inconsistencies, not a definitive authentication system."
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy and data handling",
+      "keywords": ["privacy", "data", "images", "stored", "storage", "save", "upload", "personal", "pii", "secure", "security", "collect", "keep", "delete", "gdpr", "sensitive"],
+      "content": "Uploaded images are processed entirely in memory and are never saved to disk or any persistent storage. VeriMed does not collect any personally identifiable information. No user accounts or authentication are required. Rate limiting is enforced to protect the service from abuse. Conversation history (your follow-up questions and answers) is stored locally in a database only to support the follow-up assistant within the same session; it is not shared or used for model training."
+    },
+    {
+      "id": "follow_up_assistant",
+      "title": "Follow-up assistant",
+      "keywords": ["assistant", "chat", "chatbot", "follow", "followup", "follow-up", "question", "questions", "ask", "conversation", "help", "explain", "clarify", "understand"],
+      "content": "After a verification is complete, you can ask the follow-up assistant questions about the specific result you just received. The assistant has access to the full scoring breakdown, extracted fields, and classification for that verification. It can explain what specific signals mean, what actions to take, and provide context about the identified product. The assistant cannot access external databases or the internet in real time, and always recommends consulting a pharmacist for medical decisions. It will not claim a medicine is definitely real or definitely fake."
+    },
+    {
+      "id": "upload_instructions",
+      "title": "How to upload images",
+      "keywords": ["upload", "how", "images", "photos", "three", "3", "front", "back", "barcode", "qr", "instructions", "steps", "submit", "take", "photograph"],
+      "content": "VeriMed requires exactly three images: (1) Front of the medicine package — showing the brand name, strength, and dosage form. (2) Back of the package — showing the manufacturer information, batch number, expiry date, and usage directions. (3) Close-up of the barcode or QR code — centred in the frame, no glare or shadows. All three images are required; the verification cannot proceed without all three. Accepted formats are JPEG, PNG, and WEBP. Maximum file size is 10 MB per image."
+    },
+    {
+      "id": "what_to_do_with_results",
+      "title": "What to do with the risk assessment result",
+      "keywords": ["action", "actions", "next", "steps", "pharmacist", "doctor", "report", "suspicious", "unsafe", "result", "recommendation", "advice", "use", "medicine", "take"],
+      "content": "If the result is LOW RISK: the product appears consistent with reference data, but VeriMed is not a guarantee of authenticity — use your judgement and consult a pharmacist if uncertain. If the result is MEDIUM RISK: consult a pharmacist before use; do not take the medicine until a professional has assessed it. If the result is HIGH RISK: do not use the medicine. Seek advice from a pharmacist or healthcare provider immediately and consider reporting it to the Ghana Food and Drugs Authority. If the result is CANNOT VERIFY: the product is not in the reference database — this is common for newer or lesser-known products. Consult a pharmacist before use."
+    }
+  ]
+}
