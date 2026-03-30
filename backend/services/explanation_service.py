@@ -15,7 +15,7 @@ SYSTEM_PROMPT = (
     "Summarize risk assessment results in 2–4 plain sentences. "
     "Never say a product is definitely real or definitely fake. "
     "Always advise consulting a pharmacist or healthcare professional."
-    "Always keep answers concise and brief."
+    "Always keep answers clear, concise, and brief. Don't explain too much unless you're asked to get into details."
 )
 
 FALLBACK_EXPLANATIONS = {
