@@ -21,7 +21,7 @@ All scoring is deterministic. The LLM generates the final user-facing paragraph 
 ```
 verimed/
 ├── frontend/                  — Next.js 14 app (App Router, TypeScript, Tailwind)
-│   └── nextjs-app/
+│   └── web/
 ├── backend/                   — FastAPI application
 │   ├── main.py
 │   ├── config.py              — Settings via pydantic-settings
@@ -377,7 +377,7 @@ pip install fastapi uvicorn python-multipart pydantic \
     python-dotenv anthropic
 
 # Frontend
-npx create-next-app@latest nextjs-app --typescript --tailwind --app --no-src-dir
+npx create-next-app@latest web --typescript --tailwind --app --no-src-dir
 ```
 
 ---

@@ -112,7 +112,7 @@ Counterfeit and substandard medicines are dangerous. Ordinary consumers cannot r
 ```
 verimed/
 ├── frontend/
-│   └── nextjs-app/
+│   └── web/
 ├── backend/
 │   ├── main.py
 │   ├── routes/

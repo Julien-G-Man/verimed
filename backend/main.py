@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
     from services.scoring_service import load_rules
 
     logger.info("========================================")
-    logger.info("Loading products and rules into cache...")
+    logger.info("Loading products and rules into cache... ")
     logger.info("========================================")
     init_db()
     load_products()

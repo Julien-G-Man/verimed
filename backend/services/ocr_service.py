@@ -80,7 +80,7 @@ def _run_rapidocr(img: np.ndarray, min_confidence: float = 0.4) -> tuple[str, fl
 def _run_tesseract(img: np.ndarray, min_confidence: float = 0.4) -> tuple[str, float]:
     """
     Run Tesseract via pytesseract.image_to_data() for per-word confidence filtering.
-    Tesseract confidence is 0–100 int; normalised to 0.0–1.0 here.
+    Tesseract confidence is 0–100 int; normalised to 0.0–1.0 here
     """
     import pytesseract
     from pytesseract import Output

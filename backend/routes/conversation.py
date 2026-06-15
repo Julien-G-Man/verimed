@@ -84,7 +84,7 @@ def post_follow_up(request: Request, conversation_id: str, payload: FollowUpMess
 
     text = payload.message.strip()
     if not text:
-        raise HTTPException(status_code=422, detail="Message cannot be empty")
+        raise HTTPException(status_code=422, detail="Message cannot  be empty")
 
     verification = load_verification(conversation_id)
     if verification is None:

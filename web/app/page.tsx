@@ -190,7 +190,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="rounded-2xl bg-white border border-slate-200 p-5 flex flex-col">
                 <p className="text-xs sm:text-sm font-semibold text-sky-700">STEP 1</p>
-                <h3 className="mt-2 text-lg font-bold text-slate-900 leading-tight">Open VeriMed</h3>
+                <h3 className="mt-2 text-lg font-bold text-slate-900 leading-tight">Open  VeriMed</h3>
                 <p className="mt-2 text-sm text-slate-600 leading-relaxed">Go to the VeriMed web app on any phone or computer. No account, no app download, no setup required.</p>
               </div>
               <div className="rounded-2xl bg-white border border-slate-200 p-5 flex flex-col">

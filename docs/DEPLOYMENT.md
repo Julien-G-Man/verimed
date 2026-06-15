@@ -58,7 +58,7 @@ ALLOWED_ORIGINS=https://verimed-web.netlify.app,https://verimed-api.onrender.com
 
 ### Connect repo
 1. Go to [netlify.com](https://www.netlify.com) → Add new site → Import from Git
-2. Select `frontend/nextjs-app` folder
+2. Select `frontend/web` folder
 3. Framework: **Next.js**
 
 ### Set Environment Variables:
